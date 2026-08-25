@@ -12,19 +12,17 @@ export function LoginPage() {
   const navigate = useNavigate();
   const login = useAuth((s) => s.login);
   const register = useAuth((s) => s.register);
-  const accounts = useAuth((s) => s.accounts);
   const user = useAuth((s) => s.user);
   const signingIn = useAuth((s) => s.signingIn);
   const mode = getWorkspace();
   const isQa = mode === "demo";
-  const [panel, setPanel] = useState<"login" | "register">(
-    !isQa && accounts.length === 0 ? "register" : "login",
-  );
+  const [panel, setPanel] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState(mode === "demo" ? "ana@orbio.app.br" : "");
   const [password, setPassword] = useState(mode === "demo" ? "orbio" : "");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     const env = new URLSearchParams(window.location.search);
@@ -38,22 +36,29 @@ export function LoginPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    setError("");
+    setNotice("");
     if (mode === "official" && panel === "register") {
       if (password !== confirm) {
         setError("As senhas não batem.");
         return;
       }
-      const fail = await register(name, email, password);
-      if (fail) {
-        setError(fail);
+      const result = await register(name, email, password);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      if (result.needsConfirmation) {
+        setNotice("Conta criada! Confirme seu e-mail antes de entrar — te mandamos um link.");
+        setPanel("login");
         return;
       }
       navigate("/");
       return;
     }
-    const ok = await login(email, password);
-    if (!ok) {
-      setError(mode === "demo" ? "Informe uma senha para entrar." : "E-mail ou senha inválidos.");
+    const fail = await login(email, password);
+    if (fail) {
+      setError(fail);
       return;
     }
     navigate("/");
@@ -138,6 +143,8 @@ export function LoginPage() {
 
               {error ? (
                 <p className="text-center text-[12px] text-rose-500">{error}</p>
+              ) : notice ? (
+                <p className="text-center text-[12px] text-emerald-600">{notice}</p>
               ) : (
                 <p className="text-center text-[11px] text-ash-helper">
                   {isQa
@@ -172,6 +179,7 @@ export function LoginPage() {
                   className="text-[12px] text-ash-helper underline-offset-2 hover:underline"
                   onClick={() => {
                     setError("");
+                    setNotice("");
                     setPanel(panel === "register" ? "login" : "register");
                   }}
                 >

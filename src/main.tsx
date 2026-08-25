@@ -5,6 +5,7 @@ import App from "./App";
 import "./styles/index.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { applyAppearance, useUi } from "@/store/useUi";
+import { useAuth } from "@/store/useAuth";
 
 function Root() {
   const theme = useUi((s) => s.theme);
@@ -15,6 +16,8 @@ function Root() {
   useEffect(() => {
     applyAppearance({ theme, accent, fontFamily, inkColor });
   }, [theme, accent, fontFamily, inkColor]);
+
+  useEffect(() => useAuth.getState().init(), []);
 
   return <App />;
 }

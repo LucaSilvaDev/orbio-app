@@ -1,23 +1,12 @@
-import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/store/useAuth";
 import { Logo } from "@/components/brand/Logo";
 
 export function ProtectedRoute() {
   const user = useAuth((s) => s.user);
-  const [hydrated, setHydrated] = useState(useAuth.persist.hasHydrated());
+  const status = useAuth((s) => s.status);
 
-  useEffect(() => {
-    const unsub = useAuth.persist.onFinishHydration(() => setHydrated(true));
-    setHydrated(useAuth.persist.hasHydrated());
-    const timeout = window.setTimeout(() => setHydrated(true), 2500);
-    return () => {
-      unsub();
-      window.clearTimeout(timeout);
-    };
-  }, []);
-
-  if (!hydrated) {
+  if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-snow-canvas">
         <div className="flex flex-col items-center gap-3">

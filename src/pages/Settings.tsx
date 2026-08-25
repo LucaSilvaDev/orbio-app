@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -8,10 +9,37 @@ import { STAGES, toneDot } from "@/lib/stages";
 import { ACCENTS, FONTS, INKS, useUi } from "@/store/useUi";
 import { LogoPicker } from "@/components/brand/LogoPicker";
 import { envLabel, getWorkspace, wipeOfficialWorkspace } from "@/lib/workspace";
+import { supabase } from "@/services/supabase";
+import { refreshUsers } from "@/lib/directory";
 
 export function SettingsPage() {
   const user = useAuth((s) => s.user);
   const pushToast = useUi((s) => s.pushToast);
+  const [profileName, setProfileName] = useState(user?.name ?? "");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    setProfileName(user?.name ?? "");
+  }, [user?.name]);
+
+  async function saveProfile() {
+    if (getWorkspace() === "demo" || !supabase || !user) {
+      pushToast("Perfil salvo neste workspace");
+      return;
+    }
+    setSavingProfile(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ name: profileName.trim() })
+      .eq("id", user.id);
+    setSavingProfile(false);
+    if (error) {
+      pushToast("Não deu para salvar o perfil");
+      return;
+    }
+    void refreshUsers();
+    pushToast("Perfil atualizado");
+  }
   const theme = useUi((s) => s.theme);
   const setTheme = useUi((s) => s.setTheme);
   const accent = useUi((s) => s.accent);
@@ -105,20 +133,20 @@ export function SettingsPage() {
             className="space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
-              pushToast("Perfil salvo neste workspace");
+              void saveProfile();
             }}
           >
             <Field label="Nome">
-              <Input defaultValue={user?.name} />
+              <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} />
             </Field>
             <Field label="E-mail">
-              <Input defaultValue={user?.email} />
+              <Input defaultValue={user?.email} disabled />
             </Field>
             <Field label="Cargo">
-              <Input defaultValue={user?.role} />
+              <Input defaultValue={user?.role} disabled />
             </Field>
-            <Button type="submit" variant="accent">
-              Salvar perfil
+            <Button type="submit" variant="accent" disabled={savingProfile}>
+              {savingProfile ? "Salvando…" : "Salvar perfil"}
             </Button>
           </form>
         </Card>

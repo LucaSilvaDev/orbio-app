@@ -1,15 +1,21 @@
+import { useEffect, useState } from "react";
 import { ExportMenu } from "@/components/ui/ExportMenu";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
-import { listUsers } from "@/lib/directory";
+import { listUsers, refreshUsers } from "@/lib/directory";
 import { useCrm } from "@/store/useCrm";
 import { brl } from "@/lib/cn";
+import type { User } from "@/types";
 
 export function TeamPage() {
   const deals = useCrm((s) => s.deals);
   const activities = useCrm((s) => s.activities);
-  const users = listUsers();
+  const [users, setUsers] = useState<User[]>(listUsers());
+
+  useEffect(() => {
+    void refreshUsers().then(setUsers);
+  }, []);
 
   return (
     <div>
