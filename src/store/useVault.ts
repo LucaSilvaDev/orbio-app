@@ -6,8 +6,6 @@ import {
   decryptWithKey,
   encryptBytes,
   encryptWithKey,
-  exportVaultKey,
-  importVaultKey,
   isValidPin,
   openVault,
   pinProblem,
@@ -17,20 +15,24 @@ import {
   type VaultPayload,
 } from "@/lib/vaultCrypto";
 import {
-  clearSessionKey,
+  clearLockState,
+  clearSessionKeyObj,
   deleteVaultBlob,
   deleteVaultFile,
   deleteVaultFilesForRecord,
+  hasSessionMarker,
   loadVaultBlob,
   loadVaultFile,
   readKeepPref,
-  readSessionKey,
+  readLockState,
+  readSessionKeyObj,
   saveVaultBlob,
   saveVaultFile,
   vaultFileKey,
   vaultRecordId,
   writeKeepPref,
-  writeSessionKey,
+  writeLockState,
+  writeSessionKeyObj,
 } from "@/lib/vaultDb";
 
 export type { VaultItem, VaultKind };
@@ -108,10 +110,12 @@ export const useVault = create<VaultState>((set, get) => ({
     const recordId = vaultRecordId(getWorkspace(), userId);
     ownerId = recordId;
     const keepSession = readKeepPref(recordId);
+    const lockState = readLockState(recordId);
     const blob = await loadVaultBlob(recordId);
     if (!blob) {
       wipeMemory();
-      clearSessionKey(recordId);
+      await clearSessionKeyObj(recordId);
+      clearLockState(recordId);
       set({
         status: "setup",
         recordId,
@@ -124,11 +128,10 @@ export const useVault = create<VaultState>((set, get) => ({
       return;
     }
 
-    if (keepSession) {
-      const raw = readSessionKey(recordId);
-      if (raw) {
+    if (keepSession && hasSessionMarker(recordId)) {
+      const key = await readSessionKeyObj(recordId);
+      if (key) {
         try {
-          const key = await importVaultKey(raw);
           const payload = await decryptWithKey(key, blob);
           cryptoKey = key;
           blobSalt = blob.salt;
@@ -144,11 +147,11 @@ export const useVault = create<VaultState>((set, get) => ({
           });
           return;
         } catch {
-          clearSessionKey(recordId);
+          await clearSessionKeyObj(recordId);
         }
       }
     } else {
-      clearSessionKey(recordId);
+      await clearSessionKeyObj(recordId);
     }
 
     wipeMemory();
@@ -158,7 +161,8 @@ export const useVault = create<VaultState>((set, get) => ({
       items: [],
       keepSession,
       error: "",
-      fails: 0,
+      fails: lockState.fails,
+      lockedUntil: lockState.lockedUntil,
     });
   },
 
@@ -180,7 +184,8 @@ export const useVault = create<VaultState>((set, get) => ({
       cryptoKey = opened.key;
       blobSalt = blob.salt;
       blobIter = blob.iter;
-      if (get().keepSession) writeSessionKey(get().recordId, await exportVaultKey(opened.key));
+      if (get().keepSession) await writeSessionKeyObj(get().recordId, opened.key);
+      clearLockState(get().recordId);
       set({ status: "unlocked", items: [], busy: false, error: "", fails: 0 });
       return true;
     } catch {
@@ -211,8 +216,9 @@ export const useVault = create<VaultState>((set, get) => ({
       cryptoKey = opened.key;
       blobSalt = blob.salt;
       blobIter = blob.iter;
-      if (get().keepSession) writeSessionKey(get().recordId, await exportVaultKey(opened.key));
-      else clearSessionKey(get().recordId);
+      if (get().keepSession) await writeSessionKeyObj(get().recordId, opened.key);
+      else await clearSessionKeyObj(get().recordId);
+      clearLockState(get().recordId);
       set({
         status: "unlocked",
         items: opened.payload.items,
@@ -225,6 +231,7 @@ export const useVault = create<VaultState>((set, get) => ({
     } catch {
       const fails = get().fails + 1;
       const lockedUntil = fails >= 5 ? Date.now() + FAIL_WINDOW_MS * Math.min(fails - 4, 4) : 0;
+      writeLockState(get().recordId, { fails, lockedUntil });
       set({
         busy: false,
         error: "PIN incorreto.",
@@ -237,7 +244,7 @@ export const useVault = create<VaultState>((set, get) => ({
 
   lock: () => {
     wipeMemory();
-    clearSessionKey(get().recordId);
+    void clearSessionKeyObj(get().recordId);
     if (get().status === "setup") return;
     set({ status: get().recordId ? "locked" : "booting", items: [], error: "", busy: false });
   },
@@ -246,11 +253,11 @@ export const useVault = create<VaultState>((set, get) => ({
     writeKeepPref(get().recordId, value);
     set({ keepSession: value });
     if (!cryptoKey) {
-      if (!value) clearSessionKey(get().recordId);
+      if (!value) await clearSessionKeyObj(get().recordId);
       return;
     }
-    if (value) writeSessionKey(get().recordId, await exportVaultKey(cryptoKey));
-    else clearSessionKey(get().recordId);
+    if (value) await writeSessionKeyObj(get().recordId, cryptoKey);
+    else await clearSessionKeyObj(get().recordId);
   },
 
   upsertItem: async (draft) => {
@@ -337,7 +344,7 @@ export const useVault = create<VaultState>((set, get) => ({
       cryptoKey = again.key;
       blobSalt = sealed.salt;
       blobIter = sealed.iter;
-      if (get().keepSession) writeSessionKey(get().recordId, await exportVaultKey(again.key));
+      if (get().keepSession) await writeSessionKeyObj(get().recordId, again.key);
       set({ busy: false, error: "", items: opened.payload.items });
       return true;
     } catch {
@@ -350,7 +357,8 @@ export const useVault = create<VaultState>((set, get) => ({
     await deleteVaultFilesForRecord(get().recordId);
     await deleteVaultBlob(get().recordId);
     wipeMemory();
-    clearSessionKey(get().recordId);
+    await clearSessionKeyObj(get().recordId);
+    clearLockState(get().recordId);
     set({ status: "setup", items: [], error: "", fails: 0, lockedUntil: 0 });
   },
 }));

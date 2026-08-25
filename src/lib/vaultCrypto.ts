@@ -90,20 +90,9 @@ export async function deriveVaultKey(pin: string, salt: Uint8Array, iterations =
     { name: "PBKDF2", salt: saltCopy, iterations, hash: "SHA-256" },
     await importPin(pin),
     { name: "AES-GCM", length: 256 },
-    true,
+    false,
     ["encrypt", "decrypt"],
   )
-}
-
-export async function exportVaultKey(key: CryptoKey) {
-  return bufToB64(await crypto.subtle.exportKey("raw", key))
-}
-
-export async function importVaultKey(raw: string) {
-  return crypto.subtle.importKey("raw", b64ToBytes(raw), { name: "AES-GCM" }, true, [
-    "encrypt",
-    "decrypt",
-  ])
 }
 
 export async function sealVault(pin: string, payload: VaultPayload): Promise<VaultBlob> {
