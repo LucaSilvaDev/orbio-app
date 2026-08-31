@@ -87,7 +87,7 @@ export function DashboardPage() {
               ]}
             />
             <Link
-              to="/pipeline"
+              to="/app/pipeline"
               className="inline-flex h-10 items-center gap-1 rounded-pill bg-fog-surface px-3 text-[13px] hover:bg-lavender-wash"
             >
               Ver oportunidades <ArrowUpRight className="h-3.5 w-3.5" />
@@ -192,7 +192,7 @@ export function DashboardPage() {
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[18px] font-semibold tracking-[-0.02em]">Agenda do time</h2>
-            <Link to="/calendar" className="text-[13px] text-royal-signal">
+            <Link to="/app/calendar" className="text-[13px] text-royal-signal">
               Ver todas
             </Link>
           </div>
@@ -227,7 +227,7 @@ export function DashboardPage() {
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[18px] font-semibold tracking-[-0.02em]">Inbox interno</h2>
-            <Link to="/inbox" className="text-[13px] text-royal-signal">
+            <Link to="/app/inbox" className="text-[13px] text-royal-signal">
               Abrir
             </Link>
           </div>
@@ -243,7 +243,7 @@ export function DashboardPage() {
                 return (
                   <Link
                     key={item.id}
-                    to="/inbox"
+                    to="/app/inbox"
                     className="flex items-start gap-3 rounded-2xl px-2 py-2 hover:bg-fog-surface"
                   >
                     <Avatar initials={author?.initials ?? "?"} hue={author?.avatarHue} size="sm" />

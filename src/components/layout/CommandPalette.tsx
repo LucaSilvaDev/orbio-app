@@ -7,24 +7,24 @@ import { useUi } from "@/store/useUi";
 import { findCompany } from "@/lib/records";
 
 const pages = [
-  { to: "/", label: "Visão geral" },
-  { to: "/pipeline", label: "Pipeline" },
-  { to: "/contacts", label: "Contatos" },
-  { to: "/companies", label: "Empresas" },
-  { to: "/leads", label: "Leads" },
-  { to: "/activities", label: "Atividades" },
-  { to: "/calendar", label: "Agenda" },
-  { to: "/notes", label: "Notas e lembretes" },
-  { to: "/maps", label: "Fluxograma e mindmap" },
-  { to: "/inbox", label: "Inbox interno" },
-  { to: "/products", label: "Produtos" },
-  { to: "/invoices", label: "Faturas" },
-  { to: "/campaigns", label: "Campanhas" },
-  { to: "/reports", label: "Relatórios" },
-  { to: "/documents", label: "Arquivos" },
-  { to: "/vault", label: "Cofre pessoal" },
-  { to: "/team", label: "Equipe" },
-  { to: "/settings", label: "Ajustes" },
+  { to: "/app", label: "Visão geral" },
+  { to: "/app/pipeline", label: "Pipeline" },
+  { to: "/app/contacts", label: "Contatos" },
+  { to: "/app/companies", label: "Empresas" },
+  { to: "/app/leads", label: "Leads" },
+  { to: "/app/activities", label: "Atividades" },
+  { to: "/app/calendar", label: "Agenda" },
+  { to: "/app/notes", label: "Notas e lembretes" },
+  { to: "/app/maps", label: "Fluxograma e mindmap" },
+  { to: "/app/inbox", label: "Inbox interno" },
+  { to: "/app/products", label: "Produtos" },
+  { to: "/app/invoices", label: "Faturas" },
+  { to: "/app/campaigns", label: "Campanhas" },
+  { to: "/app/reports", label: "Relatórios" },
+  { to: "/app/documents", label: "Arquivos" },
+  { to: "/app/vault", label: "Cofre pessoal" },
+  { to: "/app/team", label: "Equipe" },
+  { to: "/app/settings", label: "Ajustes" },
 ];
 
 export function CommandPalette() {
@@ -43,18 +43,18 @@ export function CommandPalette() {
     const people = contacts
       .filter((c) => c.name.toLowerCase().includes(q) || c.email.includes(q))
       .slice(0, 4)
-      .map((c) => ({ type: "Contato", label: c.name, to: `/contacts/${c.id}` }));
+      .map((c) => ({ type: "Contato", label: c.name, to: `/app/contacts/${c.id}` }));
     const firms = companies
       .filter((c) => c.name.toLowerCase().includes(q))
       .slice(0, 3)
-      .map((c) => ({ type: "Empresa", label: c.name, to: `/companies/${c.id}` }));
+      .map((c) => ({ type: "Empresa", label: c.name, to: `/app/companies/${c.id}` }));
     const opps = deals
       .filter((d) => {
         const company = findCompany(companies, d.companyId)?.name ?? "";
         return d.name.toLowerCase().includes(q) || company.toLowerCase().includes(q);
       })
       .slice(0, 4)
-      .map((d) => ({ type: "Deal", label: d.name, to: `/pipeline/${d.id}` }));
+      .map((d) => ({ type: "Deal", label: d.name, to: `/app/pipeline/${d.id}` }));
     return [...pageHits, ...people, ...firms, ...opps].slice(0, 12);
   }, [query, contacts, companies, deals]);
 

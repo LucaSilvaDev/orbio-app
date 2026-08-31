@@ -63,7 +63,7 @@ export function CompaniesPage() {
           return (
             <Reveal key={company.id} delay={i * 0.04}>
               <Card className="h-full">
-                <Link to={`/companies/${company.id}`} className="block">
+                <Link to={`/app/companies/${company.id}`} className="block">
                   <div className="flex items-start justify-between">
                     <div>
                       <h2 className="text-[16px] font-semibold">{company.name}</h2>
@@ -206,7 +206,7 @@ export function CompanyDetailPage() {
         <Card className="p-5">
           <h3 className="mb-3 font-semibold">Pessoas</h3>
           {people.map((person) => (
-            <Link key={person.id} to={`/contacts/${person.id}`} className="flex justify-between py-2 text-[14px]">
+            <Link key={person.id} to={`/app/contacts/${person.id}`} className="flex justify-between py-2 text-[14px]">
               <span>{person.name}</span>
               <span className="text-ash-helper">{person.title}</span>
             </Link>
@@ -215,7 +215,7 @@ export function CompanyDetailPage() {
         <Card className="p-5">
           <h3 className="mb-3 font-semibold">Deals</h3>
           {opps.map((deal) => (
-            <Link key={deal.id} to={`/pipeline/${deal.id}`} className="flex justify-between py-2 text-[14px]">
+            <Link key={deal.id} to={`/app/pipeline/${deal.id}`} className="flex justify-between py-2 text-[14px]">
               <span>{deal.name}</span>
               <span className="text-royal-signal">{brl.format(deal.value)}</span>
             </Link>

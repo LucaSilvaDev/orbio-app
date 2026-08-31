@@ -46,7 +46,7 @@ function DealCard({ deal }: { deal: Deal }) {
       style={{ transform: CSS.Translate.toString(transform) }}
       className={`rounded-card bg-snow-canvas p-3 shadow-card ${isDragging ? "z-20 opacity-80" : ""}`}
     >
-      <Link to={`/pipeline/${deal.id}`} className="block" onClick={(e) => e.stopPropagation()}>
+      <Link to={`/app/pipeline/${deal.id}`} className="block" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[14px] font-semibold text-graphite-body">
@@ -180,7 +180,7 @@ export function PipelinePage() {
             return (
               <Link
                 key={deal.id}
-                to={`/pipeline/${deal.id}`}
+                to={`/app/pipeline/${deal.id}`}
                 className="flex items-center justify-between rounded-[22px] bg-snow-canvas/80 px-4 py-3 shadow-card hover:shadow-lift"
               >
                 <span className="font-medium">{company?.name} · {deal.name}</span>
@@ -205,7 +205,7 @@ export function PipelinePage() {
               {filtered.map((deal) => (
                 <tr key={deal.id} className="border-t border-stone-divider">
                   <td className="px-4 py-3">
-                    <Link to={`/pipeline/${deal.id}`} className="font-medium hover:text-royal-signal">
+                    <Link to={`/app/pipeline/${deal.id}`} className="font-medium hover:text-royal-signal">
                       {deal.name}
                     </Link>
                   </td>
@@ -226,7 +226,7 @@ export function PipelinePage() {
             .slice()
             .sort((a, b) => a.closeDate.localeCompare(b.closeDate))
             .map((deal) => (
-              <Link key={deal.id} to={`/pipeline/${deal.id}`} className="rounded-[22px] bg-snow-canvas/80 p-4 shadow-card hover:shadow-lift">
+              <Link key={deal.id} to={`/app/pipeline/${deal.id}`} className="rounded-[22px] bg-snow-canvas/80 p-4 shadow-card hover:shadow-lift">
                 <p className="text-[12px] text-ash-helper">{deal.closeDate}</p>
                 <p className="mt-1 font-semibold">{deal.name}</p>
                 <p className="mt-2 font-mono text-royal-signal">{brl.format(deal.value)}</p>

@@ -38,33 +38,33 @@ import { AppearanceControl } from "@/components/layout/AppearanceControl";
 const groups = [
   {
     label: "Favoritos",
-    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, end: true }],
+    items: [{ to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true }],
   },
   {
     label: "Workspace",
     items: [
-      { to: "/companies", label: "Empresas", icon: Building2 },
-      { to: "/contacts", label: "Pessoas", icon: Users },
-      { to: "/pipeline", label: "Oportunidades", icon: Workflow },
-      { to: "/leads", label: "Leads", icon: Activity },
-      { to: "/activities", label: "Tarefas", icon: CheckSquare },
-      { to: "/notes", label: "Notas", icon: StickyNote },
-      { to: "/inbox", label: "Inbox", icon: Inbox },
+      { to: "/app/companies", label: "Empresas", icon: Building2 },
+      { to: "/app/contacts", label: "Pessoas", icon: Users },
+      { to: "/app/pipeline", label: "Oportunidades", icon: Workflow },
+      { to: "/app/leads", label: "Leads", icon: Activity },
+      { to: "/app/activities", label: "Tarefas", icon: CheckSquare },
+      { to: "/app/notes", label: "Notas", icon: StickyNote },
+      { to: "/app/inbox", label: "Inbox", icon: Inbox },
     ],
   },
   {
     label: "Mais",
     items: [
-      { to: "/calendar", label: "Agenda", icon: CalendarDays },
-      { to: "/maps", label: "Mapas", icon: GitBranch },
-      { to: "/documents", label: "Arquivos", icon: FileText },
-      { to: "/vault", label: "Cofre pessoal", icon: LockKeyhole },
-      { to: "/products", label: "Produtos", icon: Package },
-      { to: "/invoices", label: "Faturas", icon: Receipt },
-      { to: "/campaigns", label: "Campanhas", icon: Megaphone },
-      { to: "/reports", label: "Dashboards", icon: BarChart3 },
-      { to: "/team", label: "Membros", icon: Users },
-      { to: "/settings", label: "Ajustes", icon: Settings },
+      { to: "/app/calendar", label: "Agenda", icon: CalendarDays },
+      { to: "/app/maps", label: "Mapas", icon: GitBranch },
+      { to: "/app/documents", label: "Arquivos", icon: FileText },
+      { to: "/app/vault", label: "Cofre pessoal", icon: LockKeyhole },
+      { to: "/app/products", label: "Produtos", icon: Package },
+      { to: "/app/invoices", label: "Faturas", icon: Receipt },
+      { to: "/app/campaigns", label: "Campanhas", icon: Megaphone },
+      { to: "/app/reports", label: "Dashboards", icon: BarChart3 },
+      { to: "/app/team", label: "Membros", icon: Users },
+      { to: "/app/settings", label: "Ajustes", icon: Settings },
     ],
   },
 ];
@@ -112,7 +112,7 @@ export function AppShell() {
         )}
       >
         <div className="flex h-12 items-center justify-between px-3">
-          <button onClick={() => navigate("/")} className="flex min-w-0 items-center gap-2">
+          <button onClick={() => navigate("/app")} className="flex min-w-0 items-center gap-2">
             <Logo wordmark={!collapsed} size={22} />
             {!collapsed ? (
               <span
@@ -168,7 +168,7 @@ export function AppShell() {
                   >
                     <item.icon className="h-4 w-4 shrink-0 opacity-70" />
                     {!collapsed ? <span className="flex-1 truncate">{item.label}</span> : null}
-                    {!collapsed && item.to === "/inbox" && unreadInbox > 0 ? (
+                    {!collapsed && item.to === "/app/inbox" && unreadInbox > 0 ? (
                       <span className="mono text-[10px] text-ash-helper">{unreadInbox}</span>
                     ) : null}
                   </NavLink>
@@ -183,7 +183,7 @@ export function AppShell() {
               onClick={() => {
                 lockVaultNow();
                 logout();
-                navigate("/login");
+                navigate("/app/login");
               }}
               className="flex w-full items-center gap-2 rounded-input px-1 py-1 text-left hover:bg-fog-surface"
             >
@@ -202,7 +202,7 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] bg-snow-canvas/55 shadow-card backdrop-blur-xl">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 px-5">
           <p className="mono hidden text-[11px] text-ash-helper md:block">
-            {location.pathname === "/" ? "Dashboard" : location.pathname.replace("/", "")}
+            {location.pathname === "/app" ? "Dashboard" : location.pathname.replace("/app/", "")}
           </p>
           <div className="flex-1" />
           <AppearanceControl />

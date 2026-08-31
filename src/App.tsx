@@ -4,6 +4,11 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { LoginPage } from "@/pages/Login";
 import { Logo } from "@/components/brand/Logo";
+import { PublicLayout } from "@/components/site/PublicLayout";
+import { LandingPage } from "@/pages/site/LandingPage";
+import { ThankYouPage } from "@/pages/site/ThankYouPage";
+import { PrivacyPolicyPage } from "@/pages/site/PrivacyPolicyPage";
+import { NotFoundPage } from "@/pages/site/NotFoundPage";
 
 const DashboardPage = lazy(() =>
   import("@/pages/Dashboard").then((m) => ({ default: m.DashboardPage })),
@@ -82,8 +87,16 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
+          {/* Site público (institucional/comercial) */}
+          <Route element={<PublicLayout />}>
+            <Route index element={<LandingPage />} />
+            <Route path="obrigado" element={<ThankYouPage />} />
+            <Route path="privacidade" element={<PrivacyPolicyPage />} />
+          </Route>
+
+          {/* App logado */}
+          <Route path="/app/login" element={<LoginPage />} />
+          <Route path="/app" element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
               <Route index element={<DashboardPage />} />
               <Route path="pipeline" element={<PipelinePage />} />
@@ -106,9 +119,12 @@ export default function App() {
               <Route path="vault" element={<VaultPage />} />
               <Route path="team" element={<TeamPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/app" replace />} />
             </Route>
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+
+          {/* 404 público */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

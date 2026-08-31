@@ -80,7 +80,7 @@ export function DealDetailPage() {
             <div>
               <dt className="text-[12px] text-ash-helper">Empresa</dt>
               <dd>
-                <Link className="text-royal-signal" to={`/companies/${company?.id}`}>
+                <Link className="text-royal-signal" to={`/app/companies/${company?.id}`}>
                   {company?.name}
                 </Link>
               </dd>
@@ -88,7 +88,7 @@ export function DealDetailPage() {
             <div>
               <dt className="text-[12px] text-ash-helper">Contato</dt>
               <dd>
-                <Link className="text-royal-signal" to={`/contacts/${contact?.id}`}>
+                <Link className="text-royal-signal" to={`/app/contacts/${contact?.id}`}>
                   {contact?.name}
                 </Link>
               </dd>

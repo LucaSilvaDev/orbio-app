@@ -174,7 +174,7 @@ export function SettingsPage() {
               onClick={() => {
                 wipeOfficialWorkspace();
                 pushToast("Produção zerada");
-                window.location.assign("/login");
+                window.location.assign("/app/login");
               }}
             >
               Zerar produção

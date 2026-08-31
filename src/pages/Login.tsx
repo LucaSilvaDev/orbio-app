@@ -31,7 +31,7 @@ export function LoginPage() {
   }, [mode]);
 
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
+    if (user) navigate("/app", { replace: true });
   }, [user, navigate]);
 
   async function onSubmit(event: FormEvent) {
@@ -53,7 +53,7 @@ export function LoginPage() {
         setPanel("login");
         return;
       }
-      navigate("/");
+      navigate("/app");
       return;
     }
     const fail = await login(email, password);
@@ -61,7 +61,7 @@ export function LoginPage() {
       setError(fail);
       return;
     }
-    navigate("/");
+    navigate("/app");
   }
 
   return (

@@ -78,7 +78,7 @@ export function ContactsPage() {
               return (
                 <tr key={contact.id} className="border-t border-stone-divider hover:bg-lavender-wash/50">
                   <td className="px-4 py-3">
-                    <Link to={`/contacts/${contact.id}`} className="flex items-center gap-2 font-medium text-graphite-body">
+                    <Link to={`/app/contacts/${contact.id}`} className="flex items-center gap-2 font-medium text-graphite-body">
                       <Avatar initials={contact.name.split(" ").map((p) => p[0]).slice(0, 2).join("")} size="sm" />
                       {contact.name}
                     </Link>
@@ -113,7 +113,7 @@ export function ContactsPage() {
           {rows.map((contact) => {
             const company = findCompany(companies, contact.companyId);
             return (
-              <Link key={contact.id} to={`/contacts/${contact.id}`}>
+              <Link key={contact.id} to={`/app/contacts/${contact.id}`}>
                 <Card className="h-full transition-transform hover:-translate-y-1">
                   <div className="flex items-center gap-3">
                     <Avatar initials={contact.name.split(" ").map((p) => p[0]).slice(0, 2).join("")} />
@@ -235,7 +235,7 @@ export function ContactDetailPage() {
             {related.map((deal) => (
               <Link
                 key={deal.id}
-                to={`/pipeline/${deal.id}`}
+                to={`/app/pipeline/${deal.id}`}
                 className="flex items-center justify-between rounded-card bg-fog-surface px-3 py-2"
               >
                 <span>{deal.name}</span>

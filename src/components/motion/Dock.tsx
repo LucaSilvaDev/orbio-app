@@ -19,14 +19,14 @@ import {
 } from "lucide-react";
 
 const items = [
-  { to: "/", icon: LayoutDashboard, label: "Visão" },
-  { to: "/pipeline", icon: Workflow, label: "Pipeline" },
-  { to: "/contacts", icon: Users, label: "Contatos" },
-  { to: "/companies", icon: Building2, label: "Empresas" },
-  { to: "/calendar", icon: CalendarDays, label: "Agenda" },
-  { to: "/inbox", icon: Inbox, label: "Inbox" },
-  { to: "/reports", icon: BarChart3, label: "Relatórios" },
-  { to: "/settings", icon: Settings, label: "Ajustes" },
+  { to: "/app", icon: LayoutDashboard, label: "Visão" },
+  { to: "/app/pipeline", icon: Workflow, label: "Pipeline" },
+  { to: "/app/contacts", icon: Users, label: "Contatos" },
+  { to: "/app/companies", icon: Building2, label: "Empresas" },
+  { to: "/app/calendar", icon: CalendarDays, label: "Agenda" },
+  { to: "/app/inbox", icon: Inbox, label: "Inbox" },
+  { to: "/app/reports", icon: BarChart3, label: "Relatórios" },
+  { to: "/app/settings", icon: Settings, label: "Ajustes" },
 ];
 
 function DockIcon({
@@ -85,7 +85,7 @@ export function AppDock() {
           key={item.to}
           item={item}
           mouseX={mouseX}
-          active={item.to === "/" ? activePath === "/" : activePath.startsWith(item.to)}
+          active={item.to === "/app" ? activePath === "/app" : activePath.startsWith(item.to)}
           onClick={() => navigate(item.to)}
         />
       ))}

@@ -16,7 +16,7 @@ export function isOfficial() {
 
 export function switchWorkspace(mode: WorkspaceMode) {
   localStorage.setItem(KEY, mode);
-  window.location.assign(mode === "demo" ? "/login?qa=1" : "/login");
+  window.location.assign(mode === "demo" ? "/app/login?qa=1" : "/app/login");
 }
 
 export const workspaceStorage = {
