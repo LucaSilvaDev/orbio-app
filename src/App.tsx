@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { LoginPage } from "@/pages/Login";
@@ -9,6 +9,36 @@ import { LandingPage } from "@/pages/site/LandingPage";
 import { ThankYouPage } from "@/pages/site/ThankYouPage";
 import { PrivacyPolicyPage } from "@/pages/site/PrivacyPolicyPage";
 import { NotFoundPage } from "@/pages/site/NotFoundPage";
+import { applyAppearance, FONTS, useUi } from "@/store/useUi";
+
+// The personal appearance picker (Settings → Aparência, inside /app) is saved
+// per-browser and, unlike auth/CRM data, isn't scoped by workspace. Without this,
+// a visitor's own accent/theme customization from the logged-in app would leak
+// onto the public marketing site the moment they navigate there client-side.
+const BRAND_DEFAULT = {
+  theme: "light" as const,
+  accent: "#4a38f5",
+  fontFamily: FONTS[0].value,
+  inkColor: "",
+};
+
+function AppearanceEffect() {
+  const { pathname } = useLocation();
+  const theme = useUi((s) => s.theme);
+  const accent = useUi((s) => s.accent);
+  const fontFamily = useUi((s) => s.fontFamily);
+  const inkColor = useUi((s) => s.inkColor);
+
+  useEffect(() => {
+    if (pathname.startsWith("/app")) {
+      applyAppearance({ theme, accent, fontFamily, inkColor });
+    } else {
+      applyAppearance(BRAND_DEFAULT);
+    }
+  }, [pathname, theme, accent, fontFamily, inkColor]);
+
+  return null;
+}
 
 const DashboardPage = lazy(() =>
   import("@/pages/Dashboard").then((m) => ({ default: m.DashboardPage })),
@@ -85,6 +115,7 @@ function PageLoader() {
 export default function App() {
   return (
     <BrowserRouter>
+      <AppearanceEffect />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Site público (institucional/comercial) */}

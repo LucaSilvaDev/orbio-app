@@ -15,17 +15,23 @@
     />
     <script>
       try {
-        const raw = localStorage.getItem("orbio-theme-twenty");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const s = parsed.state || parsed;
-          if (s.theme) document.documentElement.dataset.theme = s.theme;
-          if (s.accent) document.documentElement.style.setProperty("--accent", s.accent);
-          if (s.fontFamily) {
-            document.documentElement.style.setProperty("--font-sans", s.fontFamily);
-            document.documentElement.style.setProperty("--font-body", s.fontFamily);
+        // The personal appearance picker (Settings → Aparência) only applies inside
+        // the logged-in workspace (/app/*). The public marketing site (/, /obrigado,
+        // /privacidade) always keeps the fixed brand look, regardless of what a
+        // visitor previously customized while logged in on this same browser.
+        if (location.pathname.startsWith("/app")) {
+          const raw = localStorage.getItem("orbio-theme-twenty");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const s = parsed.state || parsed;
+            if (s.theme) document.documentElement.dataset.theme = s.theme;
+            if (s.accent) document.documentElement.style.setProperty("--accent", s.accent);
+            if (s.fontFamily) {
+              document.documentElement.style.setProperty("--font-sans", s.fontFamily);
+              document.documentElement.style.setProperty("--font-body", s.fontFamily);
+            }
+            if (s.inkColor) document.documentElement.style.setProperty("--ink-override", s.inkColor);
           }
-          if (s.inkColor) document.documentElement.style.setProperty("--ink-override", s.inkColor);
         }
       } catch {}
     </script>
