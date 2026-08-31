@@ -1,8 +1,11 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Avatar } from "@/components/ui/Avatar";
-import { STAGES, toneDot } from "@/lib/stages";
+import { STAGES } from "@/lib/stages";
 
+// Hues stay in the brand's blue → indigo → violet range (matches the logo mark:
+// #2563eb, #7c3aed, #0ea5e9) — no green, this is illustrative, not the literal
+// won/lost status colors used inside the real app.
 const kpis = [
   { label: "Pipeline aberto", value: "R$ 4,2M", hint: "38 negócios" },
   { label: "Ganho no mês", value: "R$ 610 mil", hint: "12 fechamentos" },
@@ -13,8 +16,8 @@ const board: { stage: (typeof STAGES)[number]; deals: { name: string; value: str
   {
     stage: STAGES[0],
     deals: [
-      { name: "Nimbus Logística", value: "R$ 92k", initials: "NL", hue: 198 },
-      { name: "Lumen Fintech", value: "R$ 64k", initials: "LF", hue: 260 },
+      { name: "Nimbus Logística", value: "R$ 92k", initials: "NL", hue: 199 },
+      { name: "Lumen Fintech", value: "R$ 64k", initials: "LF", hue: 262 },
     ],
   },
   {
@@ -23,7 +26,7 @@ const board: { stage: (typeof STAGES)[number]; deals: { name: string; value: str
   },
   {
     stage: STAGES[3],
-    deals: [{ name: "Atlas Industrial", value: "R$ 184k", initials: "AI", hue: 150 }],
+    deals: [{ name: "Atlas Industrial", value: "R$ 184k", initials: "AI", hue: 217 }],
   },
 ];
 
@@ -52,9 +55,9 @@ export function ProductPreview() {
         className="overflow-hidden rounded-container border border-stone-divider bg-snow-canvas/90 shadow-lift backdrop-blur-xl"
       >
         <div className="flex items-center gap-1.5 border-b border-stone-divider px-5 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-coral-lost/60" aria-hidden />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-pending/60" aria-hidden />
-          <span className="h-2.5 w-2.5 rounded-full bg-mint-win/60" aria-hidden />
+          <span className="h-2.5 w-2.5 rounded-full bg-royal-signal/70" aria-hidden />
+          <span className="h-2.5 w-2.5 rounded-full bg-royal-signal/45" aria-hidden />
+          <span className="h-2.5 w-2.5 rounded-full bg-royal-signal/25" aria-hidden />
           <span className="mono ml-3 text-[11px] text-ash-helper">app.orbio.app.br/pipeline</span>
         </div>
 
@@ -79,7 +82,7 @@ export function ProductPreview() {
           {board.map((column, ci) => (
             <div key={column.stage.id} className="rounded-pipeline bg-fog-surface/60 p-3">
               <div className="mb-2 flex items-center gap-1.5 px-1">
-                <span className={`h-1.5 w-1.5 rounded-full ${toneDot[column.stage.tone]}`} aria-hidden />
+                <span className="h-1.5 w-1.5 rounded-full bg-royal-signal" aria-hidden />
                 <span className="mono text-[10px] text-ash-helper">{column.stage.label}</span>
               </div>
               <div className="space-y-2">
