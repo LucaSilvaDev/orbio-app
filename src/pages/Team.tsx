@@ -1,21 +1,47 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ExportMenu } from "@/components/ui/ExportMenu";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
+import { Field, Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { listUsers, refreshUsers } from "@/lib/directory";
 import { useCrm } from "@/store/useCrm";
+import { useUi } from "@/store/useUi";
 import { brl } from "@/lib/cn";
+import { getWorkspace } from "@/lib/workspace";
+import { createInvite, inviteUrl } from "@/services/invites";
 import type { User } from "@/types";
 
 export function TeamPage() {
   const deals = useCrm((s) => s.deals);
   const activities = useCrm((s) => s.activities);
+  const pushToast = useUi((s) => s.pushToast);
   const [users, setUsers] = useState<User[]>(listUsers());
+  const [email, setEmail] = useState("");
+  const [link, setLink] = useState("");
+  const [sending, setSending] = useState(false);
+  const official = getWorkspace() === "official";
 
   useEffect(() => {
     void refreshUsers().then(setUsers);
   }, []);
+
+  async function onInvite(event: FormEvent) {
+    event.preventDefault();
+    setSending(true);
+    const result = await createInvite(email);
+    setSending(false);
+    if (result.error || !result.token) {
+      pushToast(result.error ?? "Não deu para convidar");
+      return;
+    }
+    const url = inviteUrl(result.token);
+    setLink(url);
+    await navigator.clipboard.writeText(url).catch(() => undefined);
+    pushToast("Link copiado. Manda no e-mail da pessoa.");
+    setEmail("");
+  }
 
   return (
     <div>
@@ -31,6 +57,37 @@ export function TeamPage() {
           />
         }
       />
+
+      {official ? (
+        <Card className="mb-4 p-5">
+          <h2 className="text-[16px] font-semibold">Convidar um membro</h2>
+          <p className="mt-1 text-[13px] text-ash-helper">
+            Só o dono convida. A pessoa cria a conta com o mesmo e-mail e entra no workspace.
+          </p>
+          <form className="mt-4 flex flex-wrap gap-2" onSubmit={onInvite}>
+            <div className="min-w-[240px] flex-1">
+              <Field label="E-mail">
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="nome@empresa.com"
+                />
+              </Field>
+            </div>
+            <div className="flex items-end">
+              <Button type="submit" variant="accent" disabled={sending}>
+                {sending ? "Gerando…" : "Gerar convite"}
+              </Button>
+            </div>
+          </form>
+          {link ? (
+            <p className="mt-3 break-all text-[12px] text-slate-caption">{link}</p>
+          ) : null}
+        </Card>
+      ) : null}
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {users.map((member) => {
           const owned = deals.filter((d) => d.ownerId === member.id);

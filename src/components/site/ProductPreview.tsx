@@ -1,112 +1,92 @@
 import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { Avatar } from "@/components/ui/Avatar";
-import { STAGES } from "@/lib/stages";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { Reveal } from "@/components/motion/Reveal";
+import { ProductShot } from "@/components/site/ProductShot";
+import { SHOTS } from "@/components/site/shots";
 
-// Hues stay in the brand's blue → indigo → violet range (matches the logo mark:
-// #2563eb, #7c3aed, #0ea5e9) — no green, this is illustrative, not the literal
-// won/lost status colors used inside the real app.
-const kpis = [
-  { label: "Pipeline aberto", value: "R$ 4,2M", hint: "38 negócios" },
-  { label: "Ganho no mês", value: "R$ 610 mil", hint: "12 fechamentos" },
-  { label: "Contatos ativos", value: "312", hint: "48 contas" },
-];
-
-const board: { stage: (typeof STAGES)[number]; deals: { name: string; value: string; initials: string; hue: number }[] }[] = [
+const spreads = [
   {
-    stage: STAGES[0],
-    deals: [
-      { name: "Nimbus Logística", value: "R$ 92k", initials: "NL", hue: 199 },
-      { name: "Lumen Fintech", value: "R$ 64k", initials: "LF", hue: 262 },
-    ],
+    kicker: "Oportunidades",
+    title: "O funil inteiro, no mesmo objeto.",
+    body: "Tabela, lista, kanban e calendário sobre os mesmos deals. Valor, estágio e próximo passo visíveis — sem exportar pra planilha no fim do dia.",
+    shot: SHOTS.kanban,
+    position: "16% 20%",
   },
   {
-    stage: STAGES[2],
-    deals: [{ name: "Vértice Saúde", value: "R$ 241k", initials: "VS", hue: 222 }],
+    kicker: "Pessoas e contas",
+    title: "Quem move a receita, com dono e último toque.",
+    body: "Contatos com cargo e empresa. Contas com saúde, ARR e cobertura. O time para de perguntar no WhatsApp quem é quem.",
+    shot: SHOTS.contacts,
+    position: "18% 22%",
+    reverse: true,
   },
   {
-    stage: STAGES[3],
-    deals: [{ name: "Atlas Industrial", value: "R$ 184k", initials: "AI", hue: 217 }],
+    kicker: "Receita",
+    title: "Do rascunho ao caixa, com atraso visível.",
+    body: "Faturas no mesmo workspace do pipeline. Emitido, pago e atrasado no mesmo olhar — sem outro sistema só pra financeiro.",
+    shot: SHOTS.invoices,
+    position: "14% 10%",
   },
 ];
 
 export function ProductPreview() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [36, -36]);
-  const rotate = useTransform(scrollYProgress, [0, 1], [2.5, -2.5]);
+  const stage = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: stage,
+    offset: ["start end", "start 20%"],
+  });
+  const scale = useTransform(scrollYProgress, [0, 1], reduce ? [1, 1] : [0.92, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [80, 0]);
+  const radius = useTransform(scrollYProgress, [0, 1], reduce ? [14, 14] : [28, 14]);
 
   return (
-    <div ref={ref} className="relative mx-auto mt-16 max-w-4xl px-5">
-      <div
-        className="pointer-events-none absolute -inset-x-10 -inset-y-16 -z-10 opacity-70 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(60% 60% at 30% 20%, color-mix(in srgb, var(--accent) 30%, transparent), transparent), radial-gradient(50% 50% at 80% 80%, #ffd8f3aa, transparent)",
-        }}
-        aria-hidden
-      />
-      <motion.div
-        style={{ y, rotate }}
-        initial={{ opacity: 0, y: 60, scale: 0.94 }}
-        whileInView={{ opacity: 1, y: 0, scale: 1 }}
-        viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        className="overflow-hidden rounded-container border border-stone-divider bg-snow-canvas/90 shadow-lift backdrop-blur-xl"
-      >
-        <div className="flex items-center gap-1.5 border-b border-stone-divider px-5 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-royal-signal/70" aria-hidden />
-          <span className="h-2.5 w-2.5 rounded-full bg-royal-signal/45" aria-hidden />
-          <span className="h-2.5 w-2.5 rounded-full bg-royal-signal/25" aria-hidden />
-          <span className="mono ml-3 text-[11px] text-ash-helper">app.orbio.app.br/pipeline</span>
-        </div>
+    <>
+      <div ref={stage} className="site-wrap pb-8">
+        <Reveal>
+          <p className="site-kicker text-ash-helper">O produto, sem mock</p>
+          <h2 className="mt-4 max-w-4xl font-serif text-[clamp(36px,6vw,84px)] leading-[0.92] tracking-[-0.04em] text-midnight-ink">
+            Prints reais do workspace. Não é ilustração.
+          </h2>
+        </Reveal>
+        <motion.div style={{ scale, y, borderRadius: radius }} className="site-shot mt-10 overflow-hidden">
+          <img
+            src={SHOTS.dashboard.src}
+            alt={SHOTS.dashboard.alt}
+            width={1800}
+            height={1083}
+            className="w-full object-cover object-[12%_8%]"
+          />
+        </motion.div>
+      </div>
 
-        <div className="grid gap-4 p-5 sm:grid-cols-3">
-          {kpis.map((kpi, i) => (
-            <motion.div
-              key={kpi.label}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
-              className="rounded-pipeline bg-fog-surface p-4"
-            >
-              <p className="text-[11px] text-ash-helper">{kpi.label}</p>
-              <p className="mt-1 font-mono text-[20px] tracking-[-0.03em] text-midnight-ink">{kpi.value}</p>
-              <p className="mt-0.5 text-[11px] text-slate-caption">{kpi.hint}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid gap-3 px-5 pb-6 sm:grid-cols-3">
-          {board.map((column, ci) => (
-            <div key={column.stage.id} className="rounded-pipeline bg-fog-surface/60 p-3">
-              <div className="mb-2 flex items-center gap-1.5 px-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-royal-signal" aria-hidden />
-                <span className="mono text-[10px] text-ash-helper">{column.stage.label}</span>
-              </div>
-              <div className="space-y-2">
-                {column.deals.map((deal, di) => (
-                  <motion.div
-                    key={deal.name}
-                    initial={{ opacity: 0, x: 12 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.25 + ci * 0.1 + di * 0.06 }}
-                    className="rounded-input bg-snow-canvas p-3 shadow-card"
-                  >
-                    <p className="text-[12px] font-medium text-midnight-ink">{deal.name}</p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="font-mono text-[11px] text-slate-caption">{deal.value}</span>
-                      <Avatar initials={deal.initials} hue={deal.hue} size="sm" />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
+      <div id="recursos" className="site-wrap">
+        {spreads.map((item, i) => (
+          <article
+            key={item.kicker}
+            className="grid items-center gap-10 border-t border-stone-divider py-20 lg:grid-cols-2 lg:gap-16"
+          >
+            <Reveal className={item.reverse ? "lg:order-2" : undefined}>
+              <p className="site-kicker text-ash-helper">{item.kicker}</p>
+              <h3 className="mt-4 font-serif text-[clamp(32px,4.6vw,64px)] leading-[0.95] tracking-[-0.035em] text-midnight-ink">
+                {item.title}
+              </h3>
+              <p className="mt-5 max-w-md text-[18px] leading-[1.35] tracking-[-0.02em] text-graphite-body">
+                {item.body}
+              </p>
+            </Reveal>
+            <Reveal delay={0.08} className={item.reverse ? "lg:order-1" : undefined}>
+              <ProductShot
+                src={item.shot.src}
+                alt={item.shot.alt}
+                parallax={36 + i * 8}
+                position={item.position}
+                className="aspect-[16/10] w-full"
+              />
+            </Reveal>
+          </article>
+        ))}
+      </div>
+    </>
   );
 }

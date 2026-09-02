@@ -24,7 +24,7 @@ import {
 import { Logo } from "@/components/brand/Logo";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
-import { envLabel, getWorkspace } from "@/lib/workspace";
+import { envLabel, getWorkspace, isShotMode } from "@/lib/workspace";
 import { useAuth } from "@/store/useAuth";
 import { useCrm } from "@/store/useCrm";
 import { useUi } from "@/store/useUi";
@@ -32,6 +32,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useDismiss } from "@/hooks/useDismiss";
 import { useVaultSession } from "@/hooks/useVaultSession";
 import { lockVaultNow } from "@/store/useVault";
+import { useCoreSync } from "@/hooks/useCoreSync";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { AppearanceControl } from "@/components/layout/AppearanceControl";
 
@@ -89,6 +90,7 @@ export function AppShell() {
   const [openNotes, setOpenNotes] = useState(false);
   const notesRef = useDismiss(() => setOpenNotes(false), openNotes);
   useVaultSession();
+  useCoreSync();
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -114,7 +116,7 @@ export function AppShell() {
         <div className="flex h-12 items-center justify-between px-3">
           <button onClick={() => navigate("/app")} className="flex min-w-0 items-center gap-2">
             <Logo wordmark={!collapsed} size={22} />
-            {!collapsed ? (
+            {!collapsed && !isShotMode() ? (
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   getWorkspace() === "official"

@@ -9,7 +9,7 @@ type SeoOptions = {
 
 const SITE_NAME = "Orbio";
 const SITE_URL = "https://orbio.app.br";
-const DEFAULT_IMAGE = `${SITE_URL}/og-image.svg`;
+const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
 function setMeta(attr: "name" | "property", key: string, content: string) {
   let tag = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);

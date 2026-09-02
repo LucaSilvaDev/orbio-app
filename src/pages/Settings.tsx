@@ -165,7 +165,8 @@ export function SettingsPage() {
           <h2 className="mb-2 text-[18px] font-semibold">Workspace</h2>
           <p className="text-[14px] text-slate-caption">
             Agora: <strong>{envLabel()}</strong>.
-            QA carrega o time seedado. Produção começa vazia e guarda conta/senha só neste navegador.
+            QA carrega o time seedado neste navegador. Produção persiste empresas, pessoas e deals no
+            Supabase, no workspace da conta.
           </p>
           {getWorkspace() === "official" ? (
             <Button

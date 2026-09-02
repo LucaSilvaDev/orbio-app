@@ -23,7 +23,7 @@ export function LandingPage() {
       <FAQSection />
       <ContactSection />
       <StickyMobileCTA />
-      <div className="h-16 sm:hidden" aria-hidden />
+      <div className="h-20 sm:hidden" aria-hidden />
     </>
   );
 }

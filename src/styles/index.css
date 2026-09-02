@@ -395,13 +395,13 @@ html[data-theme="dark"] .grain {
   text-align: center;
   transform: translateY(0) scale(1);
   transition:
-    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .login-vault:hover,
 .login-vault:focus-within {
-  transform: translateY(-10px) scale(1.03);
+  transform: translateY(-8px) scale(1.02);
   box-shadow:
     0 48px 100px -36px rgba(37, 99, 235, 0.38),
     0 22px 48px -24px rgba(18, 20, 26, 0.2);
@@ -411,25 +411,6 @@ html[data-theme="dark"] .grain {
   display: grid;
   justify-items: center;
   gap: 10px;
-}
-
-.login-brand {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 88px;
-  height: 88px;
-}
-
-.login-brand__water {
-  pointer-events: none;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 160px;
-  height: 160px;
-  transform: translate(-50%, -50%);
-  opacity: 0.14;
 }
 
 .login-kicker {
@@ -445,37 +426,10 @@ html[data-theme="dark"] .grain {
   color: #6b7280;
 }
 
-.login-fold {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.login-vault:hover .login-fold,
-.login-vault:focus-within .login-fold {
-  grid-template-rows: 1fr;
-}
-
-.login-fold__inner {
-  min-height: 0;
-  overflow: hidden;
-}
-
 .login-reveal {
   display: grid;
   gap: 12px;
-  padding-top: 28px;
-  opacity: 0;
-  transform: translateY(12px);
-  transition:
-    opacity 0.35s ease 0.08s,
-    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.login-vault:hover .login-reveal,
-.login-vault:focus-within .login-reveal {
-  opacity: 1;
-  transform: none;
+  margin-top: 28px;
 }
 
 .login-mode {
@@ -550,18 +504,132 @@ html[data-theme="dark"] .grain {
   opacity: 0.6;
 }
 
+html[data-site="public"] body {
+  background: var(--surface-canvas);
+}
+
+/* Public marketing site — New Form rhythm, Orbio tokens */
+.site-editorial {
+  background: var(--surface-canvas);
+  color: var(--ink);
+}
+
+.site-wrap {
+  margin-inline: auto;
+  max-width: 1400px;
+  padding-inline: 20px;
+}
+
+@media (min-width: 640px) {
+  .site-wrap {
+    padding-inline: 40px;
+  }
+}
+
+.site-kicker {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.site-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: #fff;
+  padding: 18px 28px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 1px 8px 20px 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s;
+}
+
+.site-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 1px 14px 28px 0 color-mix(in srgb, var(--accent) 52%, transparent);
+}
+
+.site-cta:disabled {
+  opacity: 0.55;
+  transform: none;
+}
+
+.site-cta--sm {
+  padding: 12px 20px;
+}
+
+.site-cta--line {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+.site-cta--line:hover {
+  box-shadow: none;
+  border-color: var(--ink);
+}
+
+.site-cta--ghost {
+  background: transparent;
+  color: #fff;
+  box-shadow: none;
+  border: 1px solid #fff;
+  border-radius: 10px;
+}
+
+.site-cta--ghost:hover {
+  box-shadow: none;
+  background: #fff;
+  color: var(--ink);
+}
+
+.site-shot {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  background: var(--surface-wash);
+}
+
+.site-accent-band {
+  background: var(--accent);
+}
+
+.site-marquee {
+  width: max-content;
+  animation: site-marquee 32s linear infinite;
+}
+
+@keyframes site-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-marquee {
+    animation: none;
+  }
+
+  .site-cta:hover {
+    transform: none;
+  }
+}
+
 @media (hover: none), (prefers-reduced-motion: reduce) {
   .login-vault {
-    transform: none;
-    transition: none;
-  }
-
-  .login-fold {
-    grid-template-rows: 1fr;
-  }
-
-  .login-reveal {
-    opacity: 1;
     transform: none;
     transition: none;
   }

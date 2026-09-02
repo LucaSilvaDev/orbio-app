@@ -1,24 +1,31 @@
-import { Quote } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { Link } from "react-router-dom";
 import { Reveal } from "@/components/motion/Reveal";
 
 export function TestimonialsSection() {
   return (
-    <section className="mx-auto max-w-6xl px-5 py-20">
-      <Reveal>
-        <Card className="mx-auto max-w-2xl border border-stone-divider p-10 text-center">
-          <span className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-lavender-wash text-royal-signal">
-            <Quote className="h-5 w-5" aria-hidden />
-          </span>
-          <h2 className="mt-4 text-[18px] font-medium text-midnight-ink">
-            Em breve: o que nossos clientes dizem
+    <section className="bg-midnight-ink text-snow-canvas">
+      <div className="site-wrap grid gap-12 py-24 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+        <Reveal>
+          <p className="site-kicker text-white/45">Sem depoimento de estoque</p>
+          <h2 className="mt-5 font-serif text-[clamp(36px,5.5vw,84px)] leading-[0.92] tracking-[-0.04em]">
+            Ainda estamos nos primeiros clientes. Quando falarem, entra aqui — nada inventado.
           </h2>
-          <p className="mt-2 text-[13px] text-ash-helper">
-            Ainda estamos nos primeiros clientes do Orbio. Assim que tivermos depoimentos reais,
-            eles aparecem aqui — nada de avaliação inventada.
+        </Reveal>
+        <Reveal delay={0.1}>
+          <p className="text-[18px] leading-[1.35] tracking-[-0.02em] text-white/75">
+            Enquanto isso, o caminho é direto: abre o workspace ou fala com quem constrói o
+            produto.
           </p>
-        </Card>
-      </Reveal>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link to="/app/login" className="site-cta">
+              Abrir o workspace
+            </Link>
+            <a href="#contato" className="site-cta site-cta--ghost">
+              Falar com vendas
+            </a>
+          </div>
+        </Reveal>
+      </div>
     </section>
   );
 }

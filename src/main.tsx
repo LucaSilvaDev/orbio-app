@@ -5,9 +5,13 @@ import App from "./App";
 import "./styles/index.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/store/useAuth";
+import { armShotMode } from "@/lib/workspace";
 
 function Root() {
-  useEffect(() => useAuth.getState().init(), []);
+  useEffect(() => {
+    armShotMode();
+    return useAuth.getState().init();
+  }, []);
 
   return <App />;
 }

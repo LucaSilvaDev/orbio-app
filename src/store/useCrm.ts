@@ -45,6 +45,14 @@ import type {
 } from "@/types";
 import { uid } from "@/lib/cn";
 import { getWorkspace, workspaceStorage } from "@/lib/workspace";
+import {
+  persistCompany,
+  persistCompanyPatch,
+  persistContact,
+  persistContactPatch,
+  persistDeal,
+  persistDealPatch,
+} from "@/services/core";
 
 function patch<T extends { id: string }>(list: T[], id: string, data: Partial<T>) {
   return list.map((item) => (item.id === id ? { ...item, ...data } : item));
@@ -52,6 +60,10 @@ function patch<T extends { id: string }>(list: T[], id: string, data: Partial<T>
 
 function drop<T extends { id: string }>(list: T[], id: string) {
   return list.filter((item) => item.id !== id);
+}
+
+function nextId(prefix: string) {
+  return getWorkspace() === "official" ? crypto.randomUUID() : uid(prefix);
 }
 
 type CrmState = {
@@ -74,6 +86,7 @@ type CrmState = {
   flowNodes: MapNode[];
   flowEdges: MapEdge[];
   mindNodes: MapNode[];
+  hydrateCore: (payload: { companies: Company[]; contacts: Contact[]; deals: Deal[] }) => void;
   moveDeal: (id: string, stage: PipelineStage) => void;
   updateDeal: (id: string, data: Partial<Deal>) => void;
   removeDeal: (id: string) => void;
@@ -178,22 +191,36 @@ export const useCrm = create<CrmState>()(
   persist(
     (set, get) => ({
       ...(getWorkspace() === "official" ? emptyCrm : seededCrm),
-      moveDeal: (id, stage) =>
+      hydrateCore: (payload) =>
         set({
-          deals: get().deals.map((deal) =>
-            deal.id === id
-              ? {
-                  ...deal,
-                  stage,
-                  probability:
-                    stage === "won" ? 100 : stage === "lost" ? 0 : deal.probability,
-                  updatedAt: new Date().toISOString(),
-                }
-              : deal,
-          ),
+          companies: payload.companies,
+          contacts: payload.contacts,
+          deals: payload.deals,
         }),
-      updateDeal: (id, data) => set({ deals: patch(get().deals, id, data) }),
-      removeDeal: (id) => set({ deals: drop(get().deals, id) }),
+      moveDeal: (id, stage) => {
+        const deals = get().deals.map((deal) =>
+          deal.id === id
+            ? {
+                ...deal,
+                stage,
+                probability: stage === "won" ? 100 : stage === "lost" ? 0 : deal.probability,
+                updatedAt: new Date().toISOString(),
+              }
+            : deal,
+        );
+        set({ deals });
+        const row = deals.find((deal) => deal.id === id);
+        if (row) persistDeal(row);
+      },
+      updateDeal: (id, data) => {
+        set({ deals: patch(get().deals, id, data) });
+        persistDealPatch(id, data);
+      },
+      removeDeal: (id) => {
+        const row = get().deals.find((deal) => deal.id === id);
+        set({ deals: drop(get().deals, id) });
+        if (row) persistDeal(row, "delete");
+      },
       toggleActivity: (id) =>
         set({
           activities: get().activities.map((item) =>
@@ -301,18 +328,39 @@ export const useCrm = create<CrmState>()(
           ),
         }),
       removeNote: (id) => set({ notes: drop(get().notes, id) }),
-      addContact: (contact) =>
-        set({ contacts: [{ ...contact, id: uid("c") }, ...get().contacts] }),
-      updateContact: (id, data) => set({ contacts: patch(get().contacts, id, data) }),
-      removeContact: (id) => set({ contacts: drop(get().contacts, id) }),
-      addCompany: (company) =>
-        set({ companies: [{ ...company, id: uid("co") }, ...get().companies] }),
-      updateCompany: (id, data) => set({ companies: patch(get().companies, id, data) }),
-      removeCompany: (id) => set({ companies: drop(get().companies, id) }),
-      addDeal: (deal) =>
-        set({
-          deals: [{ ...deal, id: uid("d"), updatedAt: new Date().toISOString() }, ...get().deals],
-        }),
+      addContact: (contact) => {
+        const row = { ...contact, id: nextId("c") };
+        set({ contacts: [row, ...get().contacts] });
+        persistContact(row);
+      },
+      updateContact: (id, data) => {
+        set({ contacts: patch(get().contacts, id, data) });
+        persistContactPatch(id, data);
+      },
+      removeContact: (id) => {
+        const row = get().contacts.find((item) => item.id === id);
+        set({ contacts: drop(get().contacts, id) });
+        if (row) persistContact(row, "delete");
+      },
+      addCompany: (company) => {
+        const row = { ...company, id: nextId("co") };
+        set({ companies: [row, ...get().companies] });
+        persistCompany(row);
+      },
+      updateCompany: (id, data) => {
+        set({ companies: patch(get().companies, id, data) });
+        persistCompanyPatch(id, data);
+      },
+      removeCompany: (id) => {
+        const row = get().companies.find((item) => item.id === id);
+        set({ companies: drop(get().companies, id) });
+        if (row) persistCompany(row, "delete");
+      },
+      addDeal: (deal) => {
+        const row = { ...deal, id: nextId("d"), updatedAt: new Date().toISOString() };
+        set({ deals: [row, ...get().deals] });
+        persistDeal(row);
+      },
       addLead: (lead) =>
         set({
           leads: [{ ...lead, id: uid("l"), createdAt: new Date().toISOString() }, ...get().leads],
@@ -322,65 +370,60 @@ export const useCrm = create<CrmState>()(
       convertLead: (id) => {
         const lead = get().leads.find((item) => item.id === id);
         if (!lead) return;
-        const companyId = uid("co");
-        const contactId = uid("c");
+        const company = {
+          id: nextId("co"),
+          name: lead.company,
+          domain: lead.email.split("@")[1] ?? "empresa.com",
+          cnpj: "",
+          industry: "Nova",
+          employees: "1–50",
+          city: "São Paulo",
+          country: "Brasil",
+          arr: 0,
+          health: 70,
+          ownerId: lead.ownerId,
+          tags: ["convertido"],
+          createdAt: new Date().toISOString().slice(0, 10),
+        };
+        const contact = {
+          id: nextId("c"),
+          name: lead.name,
+          title: "Contato principal",
+          email: lead.email,
+          phone: lead.phone || "",
+          companyId: company.id,
+          ownerId: lead.ownerId,
+          location: "Brasil",
+          lastTouch: new Date().toISOString().slice(0, 10),
+          score: lead.score,
+          tags: ["convertido"],
+        };
+        const deal = {
+          id: nextId("d"),
+          name: `${lead.company} — oportunidade`,
+          companyId: company.id,
+          contactId: contact.id,
+          ownerId: lead.ownerId,
+          stage: "qualification" as const,
+          value: 48000,
+          probability: 20,
+          closeDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10),
+          priority: "medium" as const,
+          source: lead.source,
+          nextStep: "Discovery inicial",
+          updatedAt: new Date().toISOString(),
+        };
         set({
-          companies: [
-            {
-              id: companyId,
-              name: lead.company,
-              domain: lead.email.split("@")[1] ?? "empresa.com",
-              cnpj: "",
-              industry: "Nova",
-              employees: "1–50",
-              city: "São Paulo",
-              country: "Brasil",
-              arr: 0,
-              health: 70,
-              ownerId: lead.ownerId,
-              tags: ["convertido"],
-              createdAt: new Date().toISOString().slice(0, 10),
-            },
-            ...get().companies,
-          ],
-          contacts: [
-            {
-              id: contactId,
-              name: lead.name,
-              title: "Contato principal",
-              email: lead.email,
-              phone: lead.phone || "",
-              companyId,
-              ownerId: lead.ownerId,
-              location: "Brasil",
-              lastTouch: new Date().toISOString().slice(0, 10),
-              score: lead.score,
-              tags: ["convertido"],
-            },
-            ...get().contacts,
-          ],
-          deals: [
-            {
-              id: uid("d"),
-              name: `${lead.company} — oportunidade`,
-              companyId,
-              contactId,
-              ownerId: lead.ownerId,
-              stage: "qualification",
-              value: 48000,
-              probability: 20,
-              closeDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10),
-              priority: "medium",
-              source: lead.source,
-              nextStep: "Discovery inicial",
-              updatedAt: new Date().toISOString(),
-            },
-            ...get().deals,
-          ],
+          companies: [company, ...get().companies],
+          contacts: [contact, ...get().contacts],
+          deals: [deal, ...get().deals],
           leads: get().leads.map((item) =>
             item.id === id ? { ...item, status: "qualified" } : item,
           ),
         });
+        persistCompany(company);
+        persistContact(contact);
+        persistDeal(deal);
       },
       addActivity: (activity) =>
         set({ activities: [{ ...activity, id: uid("a") }, ...get().activities] }),
@@ -455,6 +498,11 @@ export const useCrm = create<CrmState>()(
     {
       name: "orbio-crm-v2",
       storage: createJSONStorage(() => workspaceStorage),
+      partialize: (state) => {
+        if (getWorkspace() !== "official") return state;
+        const { companies: _c, contacts: _p, deals: _d, ...rest } = state;
+        return rest;
+      },
       merge: (persisted, current) => {
         try {
           const stored =

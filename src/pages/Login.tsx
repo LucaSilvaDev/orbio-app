@@ -6,7 +6,7 @@ import { Logo, OrbMark } from "@/components/brand/Logo";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/store/useAuth";
 import { users } from "@/data/seed";
-import { getWorkspace, switchWorkspace } from "@/lib/workspace";
+import { getWorkspace, switchWorkspace, armShotMode } from "@/lib/workspace";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -26,8 +26,16 @@ export function LoginPage() {
 
   useEffect(() => {
     const env = new URLSearchParams(window.location.search);
+    if (env.get("shot") === "1") armShotMode();
+    if (env.get("invite")) sessionStorage.setItem("orbio-invite", env.get("invite") ?? "");
+    if (sessionStorage.getItem("orbio-invite")) {
+      setPanel("register");
+      setNotice("Você foi convidado. Crie a conta com o mesmo e-mail do convite.");
+    }
     if (env.get("qa") === "1" && mode !== "demo") switchWorkspace("demo");
-    if (env.get("prod") === "1" && mode !== "official") switchWorkspace("official");
+    if ((env.get("prod") === "1" || env.get("invite")) && mode !== "official") {
+      switchWorkspace("official");
+    }
   }, [mode]);
 
   useEffect(() => {
@@ -81,21 +89,14 @@ export function LoginPage() {
       >
       <div className="login-vault">
         <div className="login-cover">
-          <div className="login-brand">
-            <span className="login-brand__water" aria-hidden>
-              <OrbMark size={160} animated={false} />
-            </span>
-            <OrbMark size={88} />
-          </div>
+          <OrbMark size={88} className="mx-auto" />
           <p className="login-kicker">Orbio</p>
           <p className="login-hint">
             {isQa ? "QA — dados fictícios para teste e pitch." : "Crie a conta ou entre neste workspace."}
           </p>
         </div>
 
-        <div className="login-fold">
-          <div className="login-fold__inner">
-            <form className="login-reveal" onSubmit={onSubmit}>
+        <form className="login-reveal" onSubmit={onSubmit}>
               {mode === "official" && panel === "register" ? (
                 <label className="login-field">
                   <span>Nome</span>
@@ -204,8 +205,6 @@ export function LoginPage() {
                 {isQa ? "Ir para produção" : "Abrir QA"}
               </button>
             </form>
-          </div>
-        </div>
       </div>
       </motion.div>
     </div>

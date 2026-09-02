@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/cn";
 import { Reveal } from "@/components/motion/Reveal";
 
 const faqs = [
@@ -35,18 +33,15 @@ const faqs = [
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-stone-divider py-4">
+    <div className="border-b border-stone-divider py-6">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between text-left"
+        className="flex w-full items-baseline justify-between gap-6 text-left"
       >
-        <span className="text-[14px] font-medium text-midnight-ink">{question}</span>
-        <ChevronDown
-          className={cn("h-4 w-4 shrink-0 text-ash-helper transition-transform", open && "rotate-180")}
-          aria-hidden
-        />
+        <span className="text-[20px] tracking-[-0.02em] text-midnight-ink sm:text-[24px]">{question}</span>
+        <span className="site-kicker shrink-0 text-ash-helper">{open ? "Fechar" : "Abrir"}</span>
       </button>
       <AnimatePresence initial={false}>
         {open ? (
@@ -54,10 +49,12 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <p className="mt-2 text-[13px] text-graphite-body">{answer}</p>
+            <p className="mt-4 max-w-2xl text-[18px] leading-[1.4] tracking-[-0.02em] text-graphite-body">
+              {answer}
+            </p>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -67,13 +64,14 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 
 export function FAQSection() {
   return (
-    <section id="faq" className="mx-auto max-w-3xl px-5 py-20">
+    <section id="faq" className="site-wrap py-24">
       <Reveal>
-        <h2 className="text-center font-serif text-[30px] text-midnight-ink">
-          Perguntas frequentes
+        <p className="site-kicker text-ash-helper">Perguntas frequentes</p>
+        <h2 className="mt-4 max-w-3xl font-serif text-[clamp(36px,5vw,72px)] leading-[0.92] tracking-[-0.04em] text-midnight-ink">
+          O que costumam perguntar antes de entrar.
         </h2>
       </Reveal>
-      <Reveal delay={0.1} className="mt-8">
+      <Reveal delay={0.08} className="mt-12">
         {faqs.map((item) => (
           <FAQItem key={item.question} question={item.question} answer={item.answer} />
         ))}

@@ -43,3 +43,13 @@ export function wipeOfficialWorkspace() {
   }
   doomed.forEach((key) => localStorage.removeItem(key));
 }
+
+export function armShotMode() {
+  if (new URLSearchParams(window.location.search).get("shot") === "1") {
+    sessionStorage.setItem("orbio-shot", "1");
+  }
+}
+
+export function isShotMode() {
+  return sessionStorage.getItem("orbio-shot") === "1";
+}
