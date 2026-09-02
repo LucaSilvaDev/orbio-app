@@ -29,25 +29,30 @@ export function readAsDataUrl(file: File) {
   });
 }
 
-export async function filesToAttachments(files: FileList | File[]) {
+export async function filesToAttachments(
+  files: FileList | File[],
+  opts?: { maxBytes?: number; embed?: boolean },
+) {
   const list = Array.from(files);
+  const max = opts?.maxBytes ?? MAX_CHAT_FILE;
+  const embed = opts?.embed ?? true;
   const attachments: Omit<ChatAttachment, "id">[] = [];
   for (const file of list) {
-    if (file.size > MAX_CHAT_FILE) {
-      throw new Error(`${file.name} passa de 1,8 MB`);
+    if (file.size > max) {
+      throw new Error(`${file.name} passa de ${formatBytes(max)}`);
     }
     attachments.push({
       name: file.name,
       mime: file.type || "application/octet-stream",
       size: file.size,
       kind: attachmentKind(file.type, file.name),
-      dataUrl: await readAsDataUrl(file),
+      dataUrl: embed ? await readAsDataUrl(file) : undefined,
     });
   }
   return attachments;
 }
 
-export function downloadDataUrl(name: string, dataUrl: string) {
+export function downloadDataUrl(name: string, dataUrl?: string) {
   if (!dataUrl) return;
   const link = document.createElement("a");
   link.href = dataUrl;

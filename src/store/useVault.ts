@@ -34,6 +34,14 @@ import {
   writeLockState,
   writeSessionKeyObj,
 } from "@/lib/vaultDb";
+import {
+  deleteVaultCipherCloud,
+  deleteVaultFileCloud,
+  loadVaultCipherCloud,
+  loadVaultFileCloud,
+  saveVaultCipherCloud,
+  saveVaultFileCloud,
+} from "@/services/vaultCloud";
 
 export type { VaultItem, VaultKind };
 
@@ -56,6 +64,7 @@ let cryptoKey: CryptoKey | null = null;
 let blobSalt = "";
 let blobIter = 0;
 let ownerId = "";
+let cloudUserId = "";
 
 const FAIL_WINDOW_MS = 30_000;
 
@@ -94,6 +103,7 @@ async function persist(items: VaultItem[]) {
   if (!cryptoKey || !ownerId) throw new Error("Cofre fechado");
   const blob = await encryptWithKey(cryptoKey, { v: 1, items }, blobSalt, blobIter);
   await saveVaultBlob(ownerId, blob);
+  if (cloudUserId) await saveVaultCipherCloud(cloudUserId, blob);
 }
 
 export const useVault = create<VaultState>((set, get) => ({
@@ -109,9 +119,14 @@ export const useVault = create<VaultState>((set, get) => ({
   boot: async (userId) => {
     const recordId = vaultRecordId(getWorkspace(), userId);
     ownerId = recordId;
+    cloudUserId = userId;
     const keepSession = readKeepPref(recordId);
     const lockState = readLockState(recordId);
-    const blob = await loadVaultBlob(recordId);
+    const local = await loadVaultBlob(recordId);
+    const remote = await loadVaultCipherCloud(userId);
+    const blob = remote ?? local;
+    if (remote) await saveVaultBlob(recordId, remote);
+    else if (local) await saveVaultCipherCloud(userId, local).catch(() => undefined);
     if (!blob) {
       wipeMemory();
       await clearSessionKeyObj(recordId);
@@ -181,6 +196,7 @@ export const useVault = create<VaultState>((set, get) => ({
       const blob = await sealVault(pin, emptyPayload());
       const opened = await openVault(pin, blob);
       await saveVaultBlob(get().recordId, blob);
+      if (cloudUserId) await saveVaultCipherCloud(cloudUserId, blob);
       cryptoKey = opened.key;
       blobSalt = blob.salt;
       blobIter = blob.iter;
@@ -274,11 +290,13 @@ export const useVault = create<VaultState>((set, get) => ({
     if (isFile && draft.file) {
       const cipher = await encryptBytes(cryptoKey, await draft.file.arrayBuffer());
       await saveVaultFile(vaultFileKey(ownerId, id), cipher);
+      if (cloudUserId) await saveVaultFileCloud(cloudUserId, id, cipher);
       fileName = draft.file.name;
       fileMime = draft.file.type || "application/octet-stream";
       fileSize = draft.file.size;
     } else if (!isFile) {
       await deleteVaultFile(vaultFileKey(ownerId, id));
+      if (cloudUserId) await deleteVaultFileCloud(cloudUserId, id);
     }
 
     const row: VaultItem = {
@@ -302,13 +320,18 @@ export const useVault = create<VaultState>((set, get) => ({
   removeItem: async (id) => {
     const next = get().items.filter((item) => item.id !== id);
     if (ownerId) await deleteVaultFile(vaultFileKey(ownerId, id));
+    if (cloudUserId) await deleteVaultFileCloud(cloudUserId, id);
     await persist(next);
     set({ items: next });
   },
 
   loadFile: async (id) => {
     if (!cryptoKey || !ownerId) throw new Error("Cofre fechado");
-    const cipher = await loadVaultFile(vaultFileKey(ownerId, id));
+    let cipher = await loadVaultFile(vaultFileKey(ownerId, id));
+    if (!cipher && cloudUserId) {
+      cipher = await loadVaultFileCloud(cloudUserId, id);
+      if (cipher) await saveVaultFile(vaultFileKey(ownerId, id), cipher);
+    }
     if (!cipher) throw new Error("Arquivo ausente");
     const bytes = await decryptBytes(cryptoKey, cipher);
     const item = get().items.find((row) => row.id === id);
@@ -331,15 +354,15 @@ export const useVault = create<VaultState>((set, get) => ({
       const sealed = await sealVault(nextPin, { v: 1, items: opened.payload.items });
       const again = await openVault(nextPin, sealed);
       await saveVaultBlob(get().recordId, sealed);
+      if (cloudUserId) await saveVaultCipherCloud(cloudUserId, sealed);
       for (const item of opened.payload.items) {
         if (item.kind !== "file") continue;
         const stored = await loadVaultFile(vaultFileKey(get().recordId, item.id));
         if (!stored) continue;
         const plain = await decryptBytes(opened.key, stored);
-        await saveVaultFile(
-          vaultFileKey(get().recordId, item.id),
-          await encryptBytes(again.key, plain),
-        );
+        const nextCipher = await encryptBytes(again.key, plain);
+        await saveVaultFile(vaultFileKey(get().recordId, item.id), nextCipher);
+        if (cloudUserId) await saveVaultFileCloud(cloudUserId, item.id, nextCipher);
       }
       cryptoKey = again.key;
       blobSalt = sealed.salt;
@@ -354,8 +377,13 @@ export const useVault = create<VaultState>((set, get) => ({
   },
 
   destroy: async () => {
+    const items = get().items;
     await deleteVaultFilesForRecord(get().recordId);
     await deleteVaultBlob(get().recordId);
+    if (cloudUserId) {
+      await deleteVaultCipherCloud(cloudUserId);
+      await Promise.all(items.map((item) => deleteVaultFileCloud(cloudUserId, item.id)));
+    }
     wipeMemory();
     await clearSessionKeyObj(get().recordId);
     clearLockState(get().recordId);

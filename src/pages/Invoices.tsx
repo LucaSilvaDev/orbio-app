@@ -12,7 +12,10 @@ import { useCrm } from "@/store/useCrm";
 import { useUi } from "@/store/useUi";
 import { brl } from "@/lib/cn";
 import { findCompany } from "@/lib/records";
-import type { InvoiceStatus } from "@/types";
+import { downloadBlob, formatBytes, MAX_DOC_FILE } from "@/lib/files";
+import { dropWorkspaceFile, getWorkspaceFile, putWorkspaceFile } from "@/services/blobs";
+import { isOfficialCloud } from "@/services/core";
+import type { Invoice, InvoiceStatus } from "@/types";
 
 const tone: Record<InvoiceStatus, "neutral" | "blue" | "mint" | "coral"> = {
   draft: "neutral",
@@ -35,8 +38,27 @@ export function InvoicesPage() {
   const [number, setNumber] = useState(`INV-${String(invoices.length + 120).padStart(3, "0")}`);
   const [amount, setAmount] = useState("48000");
   const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
+  const [boleto, setBoleto] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
   const total = invoices.reduce((sum, i) => sum + i.amount, 0);
   const overdue = invoices.filter((i) => i.status === "overdue").reduce((s, i) => s + i.amount, 0);
+  const official = isOfficialCloud();
+
+  async function downloadBoleto(invoice: Invoice) {
+    if (!invoice.filePath) return;
+    const blob = await getWorkspaceFile(invoice.filePath);
+    if (!blob) {
+      pushToast("Não deu para baixar o boleto");
+      return;
+    }
+    downloadBlob(invoice.fileName || invoice.number, blob);
+  }
+
+  async function remove(invoice: Invoice) {
+    if (invoice.filePath) await dropWorkspaceFile(invoice.filePath);
+    removeInvoice(invoice.id);
+    pushToast("Fatura removida");
+  }
 
   return (
     <div>
@@ -117,7 +139,12 @@ export function InvoicesPage() {
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Button size="sm" variant="ghost" onClick={() => removeInvoice(invoice.id)}>
+                  {invoice.filePath ? (
+                    <Button size="sm" variant="ghost" onClick={() => void downloadBoleto(invoice)}>
+                      Boleto
+                    </Button>
+                  ) : null}
+                  <Button size="sm" variant="ghost" onClick={() => void remove(invoice)}>
                     Apagar
                   </Button>
                 </td>
@@ -129,20 +156,45 @@ export function InvoicesPage() {
       <Modal open={open} title="Nova fatura" onClose={() => setOpen(false)}>
         <form
           className="space-y-3"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
+            if (boleto && boleto.size > MAX_DOC_FILE) {
+              pushToast("Arquivo maior que 20 MB");
+              return;
+            }
             const today = new Date().toISOString().slice(0, 10);
-            addInvoice({
+            const id = addInvoice({
               number,
               companyId,
-              dealId: deals[0]?.id ?? "d1",
+              dealId: deals[0]?.id ?? "",
               amount: Number(amount) || 0,
               status: "draft",
               issuedAt: today,
               dueAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString().slice(0, 10),
             });
-            pushToast("Fatura criada");
             setOpen(false);
+            const file = boleto;
+            setBoleto(null);
+            if (!file || !official) {
+              pushToast("Fatura criada");
+              return;
+            }
+            setSaving(true);
+            try {
+              const stored = await putWorkspaceFile("invoices", id, file, file.name, file.type);
+              updateInvoice(id, {
+                filePath: stored.path,
+                fileName: file.name,
+                fileMime: file.type || "application/octet-stream",
+                fileHash: stored.hash,
+                fileSize: stored.size,
+              });
+              pushToast("Fatura e boleto gravados");
+            } catch (error) {
+              pushToast(error instanceof Error ? error.message : "Fatura criada, boleto não subiu");
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           <Field label="Número">
@@ -164,8 +216,27 @@ export function InvoicesPage() {
           <Field label="Valor (BRL)">
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
-          <Button type="submit" variant="dark" className="w-full">
-            Salvar
+          <Field label="Boleto ou PDF">
+            <input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              className="w-full text-[13px]"
+              onChange={(event) => setBoleto(event.target.files?.[0] ?? null)}
+            />
+            {boleto ? (
+              <p className="mt-1 text-[12px] text-ash-helper">
+                {boleto.name} · {formatBytes(boleto.size)}
+              </p>
+            ) : (
+              <p className="mt-1 text-[12px] text-ash-helper">
+                {official
+                  ? "Vai para o bucket, não para este navegador."
+                  : "Anexo na nuvem só em produção."}
+              </p>
+            )}
+          </Field>
+          <Button type="submit" variant="dark" className="w-full" disabled={saving}>
+            {saving ? "Gravando…" : "Salvar"}
           </Button>
         </form>
       </Modal>

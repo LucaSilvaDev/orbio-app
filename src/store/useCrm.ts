@@ -53,6 +53,15 @@ import {
   persistDeal,
   persistDealPatch,
 } from "@/services/core";
+import {
+  isDurableReady,
+  persistDocument,
+  persistDocumentPatch,
+  persistInvoice,
+  persistInvoicePatch,
+  persistMessage,
+  persistThread,
+} from "@/services/durable";
 
 function patch<T extends { id: string }>(list: T[], id: string, data: Partial<T>) {
   return list.map((item) => (item.id === id ? { ...item, ...data } : item));
@@ -86,7 +95,15 @@ type CrmState = {
   flowNodes: MapNode[];
   flowEdges: MapEdge[];
   mindNodes: MapNode[];
-  hydrateCore: (payload: { companies: Company[]; contacts: Contact[]; deals: Deal[] }) => void;
+  hydrateCore: (payload: {
+    companies: Company[];
+    contacts: Contact[];
+    deals: Deal[];
+    documents?: DocumentFile[];
+    invoices?: Invoice[];
+    threads?: ChatThread[];
+    messages?: ChatMessage[];
+  }) => void;
   moveDeal: (id: string, stage: PipelineStage) => void;
   updateDeal: (id: string, data: Partial<Deal>) => void;
   removeDeal: (id: string) => void;
@@ -98,6 +115,7 @@ type CrmState = {
     authorId: string,
     body: string,
     attachments?: ChatMessage["attachments"],
+    id?: string,
   ) => void;
   markThreadRead: (threadId: string, userId: string) => void;
   openDm: (a: string, b: string) => string;
@@ -121,7 +139,7 @@ type CrmState = {
   addProduct: (product: Omit<Product, "id">) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
   removeProduct: (id: string) => void;
-  addInvoice: (invoice: Omit<Invoice, "id">) => void;
+  addInvoice: (invoice: Omit<Invoice, "id">) => string;
   updateInvoice: (id: string, data: Partial<Invoice>) => void;
   removeInvoice: (id: string) => void;
   addCampaign: (campaign: Omit<Campaign, "id">) => void;
@@ -196,6 +214,10 @@ export const useCrm = create<CrmState>()(
           companies: payload.companies,
           contacts: payload.contacts,
           deals: payload.deals,
+          ...(payload.documents ? { documents: payload.documents } : {}),
+          ...(payload.invoices ? { invoices: payload.invoices } : {}),
+          ...(payload.threads ? { threads: payload.threads } : {}),
+          ...(payload.messages ? { messages: payload.messages } : {}),
         }),
       moveDeal: (id, stage) => {
         const deals = get().deals.map((deal) =>
@@ -234,36 +256,43 @@ export const useCrm = create<CrmState>()(
             mail.id === id ? { ...mail, unread: false } : mail,
           ),
         }),
-      sendMessage: (threadId, authorId, body, attachments = []) => {
+      sendMessage: (threadId, authorId, body, attachments = [], id) => {
         const thread = get().threads.find((item) => item.id === threadId);
         if (!thread) return;
         const now = new Date().toISOString();
+        const message: ChatMessage = {
+          id: id ?? nextId("cm"),
+          threadId,
+          authorId,
+          body,
+          createdAt: now,
+          attachments,
+        };
+        const nextThread: ChatThread = {
+          ...thread,
+          updatedAt: now,
+          unreadBy: thread.memberIds.filter((memberId) => memberId !== authorId),
+        };
         set({
-          messages: [
-            ...get().messages,
-            {
-              id: uid("cm"),
-              threadId,
-              authorId,
-              body,
-              createdAt: now,
-              attachments,
-            },
-          ],
+          messages: [...get().messages, message],
           threads: patch(get().threads, threadId, {
             updatedAt: now,
-            unreadBy: thread.memberIds.filter((id) => id !== authorId),
+            unreadBy: nextThread.unreadBy,
           }),
         });
+        persistMessage(message);
+        persistThread(nextThread);
       },
       markThreadRead: (threadId, userId) => {
         const thread = get().threads.find((item) => item.id === threadId);
         if (!thread || !thread.unreadBy.includes(userId)) return;
+        const next = {
+          unreadBy: thread.unreadBy.filter((id) => id !== userId),
+        };
         set({
-          threads: patch(get().threads, threadId, {
-            unreadBy: thread.unreadBy.filter((id) => id !== userId),
-          }),
+          threads: patch(get().threads, threadId, next),
         });
+        persistThread({ ...thread, ...next });
       },
       openDm: (a, b) => {
         const existing = get().threads.find(
@@ -274,36 +303,34 @@ export const useCrm = create<CrmState>()(
             thread.memberIds.length === 2,
         );
         if (existing) return existing.id;
-        const id = uid("th");
+        const id = nextId("th");
+        const row: ChatThread = {
+          id,
+          kind: "dm",
+          memberIds: [a, b],
+          unreadBy: [],
+          updatedAt: new Date().toISOString(),
+        };
         set({
-          threads: [
-            {
-              id,
-              kind: "dm",
-              memberIds: [a, b],
-              unreadBy: [],
-              updatedAt: new Date().toISOString(),
-            },
-            ...get().threads,
-          ],
+          threads: [row, ...get().threads],
         });
+        persistThread(row);
         return id;
       },
       createChannel: (name, memberIds) => {
-        const id = uid("ch");
+        const id = nextId("ch");
+        const row: ChatThread = {
+          id,
+          kind: "channel",
+          name,
+          memberIds,
+          unreadBy: [],
+          updatedAt: new Date().toISOString(),
+        };
         set({
-          threads: [
-            {
-              id,
-              kind: "channel",
-              name,
-              memberIds,
-              unreadBy: [],
-              updatedAt: new Date().toISOString(),
-            },
-            ...get().threads,
-          ],
+          threads: [row, ...get().threads],
         });
+        persistThread(row);
         return id;
       },
       markAllNotifications: (userId) =>
@@ -431,31 +458,48 @@ export const useCrm = create<CrmState>()(
         set({ products: [{ ...product, id: uid("p") }, ...get().products] }),
       updateProduct: (id, data) => set({ products: patch(get().products, id, data) }),
       removeProduct: (id) => set({ products: drop(get().products, id) }),
-      addInvoice: (invoice) =>
-        set({ invoices: [{ ...invoice, id: uid("i") }, ...get().invoices] }),
-      updateInvoice: (id, data) => set({ invoices: patch(get().invoices, id, data) }),
-      removeInvoice: (id) => set({ invoices: drop(get().invoices, id) }),
+      addInvoice: (invoice) => {
+        const row = { ...invoice, id: nextId("i") };
+        set({ invoices: [row, ...get().invoices] });
+        persistInvoice(row);
+        return row.id;
+      },
+      updateInvoice: (id, data) => {
+        set({ invoices: patch(get().invoices, id, data) });
+        persistInvoicePatch(id, data);
+      },
+      removeInvoice: (id) => {
+        const row = get().invoices.find((item) => item.id === id);
+        set({ invoices: drop(get().invoices, id) });
+        if (row) persistInvoice(row, "delete");
+      },
       addCampaign: (campaign) =>
         set({ campaigns: [{ ...campaign, id: uid("cp") }, ...get().campaigns] }),
       updateCampaign: (id, data) => set({ campaigns: patch(get().campaigns, id, data) }),
       removeCampaign: (id) => set({ campaigns: drop(get().campaigns, id) }),
       addDocument: (doc) => {
-        const id = doc.id ?? uid("doc");
+        const id = doc.id ?? nextId("doc");
+        const row: DocumentFile = {
+          ...doc,
+          id,
+          shareMode: doc.shareMode ?? "private",
+          sharedWith: Array.isArray(doc.sharedWith) ? doc.sharedWith : [],
+        };
         set({
-          documents: [
-            {
-              ...doc,
-              id,
-              shareMode: doc.shareMode ?? "private",
-              sharedWith: Array.isArray(doc.sharedWith) ? doc.sharedWith : [],
-            },
-            ...get().documents,
-          ],
+          documents: [row, ...get().documents],
         });
+        persistDocument(row);
         return id;
       },
-      updateDocument: (id, data) => set({ documents: patch(get().documents, id, data) }),
-      removeDocument: (id) => set({ documents: drop(get().documents, id) }),
+      updateDocument: (id, data) => {
+        set({ documents: patch(get().documents, id, data) });
+        persistDocumentPatch(id, data);
+      },
+      removeDocument: (id) => {
+        const row = get().documents.find((item) => item.id === id);
+        set({ documents: drop(get().documents, id) });
+        if (row) persistDocument(row, "delete");
+      },
       addReminder: (item) =>
         set({ reminders: [{ ...item, id: uid("r") }, ...get().reminders] }),
       toggleReminder: (id) =>
@@ -501,7 +545,15 @@ export const useCrm = create<CrmState>()(
       partialize: (state) => {
         if (getWorkspace() !== "official") return state;
         const { companies: _c, contacts: _p, deals: _d, ...rest } = state;
-        return rest;
+        if (!isDurableReady()) return rest;
+        const {
+          documents: _docs,
+          invoices: _inv,
+          threads: _th,
+          messages: _msg,
+          ...local
+        } = rest;
+        return local;
       },
       merge: (persisted, current) => {
         try {

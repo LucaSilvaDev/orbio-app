@@ -20,8 +20,10 @@ import { useAuth } from "@/store/useAuth";
 import { useUi } from "@/store/useUi";
 import { findUser } from "@/lib/records";
 import { listUsers } from "@/lib/directory";
-import { downloadDataUrl, filesToAttachments, formatBytes } from "@/lib/files";
+import { downloadDataUrl, downloadBlob, filesToAttachments, formatBytes, MAX_CHAT_FILE, MAX_DOC_FILE } from "@/lib/files";
 import { uid } from "@/lib/cn";
+import { getWorkspace } from "@/lib/workspace";
+import { getWorkspaceFile, putWorkspaceFile } from "@/services/blobs";
 import type { ChatAttachment, ChatThread } from "@/types";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,17 +35,51 @@ function threadTitle(thread: ChatThread, me: string) {
 }
 
 function AttachmentCard({ file }: { file: ChatAttachment }) {
+  const [url, setUrl] = useState(file.dataUrl ?? "");
   const Icon = file.kind === "sheet" ? FileSpreadsheet : file.kind === "image" ? ImageIcon : FileText;
+
+  useEffect(() => {
+    if (file.dataUrl || !file.storagePath) return;
+    let alive = true;
+    let objectUrl = "";
+    void getWorkspaceFile(file.storagePath).then((blob) => {
+      if (!alive || !blob) return;
+      objectUrl = URL.createObjectURL(blob);
+      setUrl(objectUrl);
+    });
+    return () => {
+      alive = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [file.dataUrl, file.storagePath]);
+
+  function download() {
+    if (url) {
+      if (url.startsWith("data:")) downloadDataUrl(file.name, url);
+      else {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.name;
+        link.click();
+      }
+      return;
+    }
+    if (!file.storagePath) return;
+    void getWorkspaceFile(file.storagePath).then((blob) => {
+      if (blob) downloadBlob(file.name, blob);
+    });
+  }
+
   return (
     <div className="overflow-hidden rounded-[20px] bg-white/70 shadow-card">
-      {file.kind === "image" && file.dataUrl ? (
-        <button className="block w-full" onClick={() => window.open(file.dataUrl, "_blank")}>
-          <img src={file.dataUrl} alt={file.name} className="max-h-56 w-full object-cover" />
+      {file.kind === "image" && url ? (
+        <button className="block w-full" onClick={() => window.open(url, "_blank")}>
+          <img src={url} alt={file.name} className="max-h-56 w-full object-cover" />
         </button>
       ) : null}
       <button
         className="flex w-full items-center gap-2 px-3 py-2 text-left"
-        onClick={() => downloadDataUrl(file.name, file.dataUrl)}
+        onClick={download}
       >
         <Icon className="h-4 w-4 text-royal-signal" />
         <span className="min-w-0 flex-1">
@@ -68,6 +104,7 @@ export function InboxPage() {
   const [activeId, setActiveId] = useState(mine[0]?.id ?? "");
   const [body, setBody] = useState("");
   const [pending, setPending] = useState<ChatAttachment[]>([]);
+  const pendingBlobs = useRef(new Map<string, File>());
   const [channelOpen, setChannelOpen] = useState(false);
   const [channelName, setChannelName] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
@@ -89,21 +126,51 @@ export function InboxPage() {
 
   async function onFiles(list: FileList | null) {
     if (!list?.length) return;
+    const official = getWorkspace() === "official";
     try {
-      const next = await filesToAttachments(list);
-      setPending((current) => [...current, ...next.map((file) => ({ ...file, id: uid("att") }))]);
+      const next = await filesToAttachments(list, {
+        maxBytes: official ? MAX_DOC_FILE : MAX_CHAT_FILE,
+        embed: !official,
+      });
+      const files = Array.from(list);
+      setPending((current) => {
+        const added = next.map((file, index) => {
+          const id = uid("att");
+          if (official && files[index]) pendingBlobs.current.set(id, files[index]);
+          return { ...file, id };
+        });
+        return [...current, ...added];
+      });
     } catch (error) {
       pushToast(error instanceof Error ? error.message : "Arquivo grande demais");
     }
   }
 
-  function submit(event?: FormEvent) {
+  async function submit(event?: FormEvent) {
     event?.preventDefault();
     if (!active || (!body.trim() && pending.length === 0)) return;
-    sendMessage(active.id, meId, body.trim(), pending);
-    setBody("");
-    setPending([]);
-    pushToast("Mensagem enviada ao time");
+    const official = getWorkspace() === "official";
+    try {
+      let attachments = pending;
+      let messageId: string | undefined;
+      if (official && pending.length) {
+        messageId = crypto.randomUUID();
+        attachments = [];
+        for (const att of pending) {
+          const file = pendingBlobs.current.get(att.id);
+          if (!file) continue;
+          const stored = await putWorkspaceFile("chat", messageId, file, `${att.id}-${file.name}`);
+          pendingBlobs.current.delete(att.id);
+          attachments.push({ ...att, dataUrl: undefined, storagePath: stored.path });
+        }
+      }
+      sendMessage(active.id, meId, body.trim(), attachments, messageId);
+      setBody("");
+      setPending([]);
+      pushToast("Mensagem enviada ao time");
+    } catch (error) {
+      pushToast(error instanceof Error ? error.message : "Não deu para enviar o anexo");
+    }
   }
 
   const channels = mine.filter((thread) => thread.kind === "channel");
@@ -245,7 +312,10 @@ export function InboxPage() {
                       <button
                         type="button"
                         className="ml-2 text-ash-helper"
-                        onClick={() => setPending((list) => list.filter((item) => item.id !== file.id))}
+                        onClick={() => {
+                          pendingBlobs.current.delete(file.id);
+                          setPending((list) => list.filter((item) => item.id !== file.id));
+                        }}
                       >
                         ×
                       </button>
@@ -304,7 +374,10 @@ export function InboxPage() {
           className="space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            const id = createChannel(channelName, users.map((user) => user.id));
+            const id = createChannel(
+              channelName,
+              Array.from(new Set([meId, ...users.map((user) => user.id)])),
+            );
             setActiveId(id);
             setChannelOpen(false);
             setChannelName("");

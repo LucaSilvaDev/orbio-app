@@ -27,6 +27,7 @@ import { useUi } from "@/store/useUi";
 import { findUser } from "@/lib/records";
 import { listUsers } from "@/lib/directory";
 import { cn, uid } from "@/lib/cn";
+import { getWorkspace } from "@/lib/workspace";
 import { DOC_ACCEPT, MAX_DOC_FILE, downloadBlob, formatBytes, inferDocumentKind } from "@/lib/files";
 import { deleteDocFile, loadDocFile, saveDocFile } from "@/lib/docStore";
 import { canManageDocument, canSeeDocument, isSharedWithMe, shareBadge } from "@/lib/docShare";
@@ -134,8 +135,8 @@ export function DocumentsPage() {
     const recipients = nextSharedWith(shareMode, sharedWith, ownerId);
     setSaving(true);
     try {
-      const id = uid("doc");
-      await saveDocFile(id, file);
+      const id = getWorkspace() === "official" ? crypto.randomUUID() : uid("doc");
+      const saved = await saveDocFile(id, file);
       addDocument({
         id,
         name: name.trim() || file.name,
@@ -149,28 +150,36 @@ export function DocumentsPage() {
         hasFile: true,
         shareMode,
         sharedWith: recipients,
+        storagePath: saved.path,
+        sha256: saved.hash,
+        sizeBytes: saved.size,
       });
       notifyShare(name.trim() || file.name, user?.name ?? "Alguém", recipients);
       pushToast("Arquivo salvo");
       resetForm();
-    } catch {
-      pushToast("Não deu para gravar o arquivo");
+    } catch (error) {
+      pushToast(error instanceof Error ? error.message : "Não deu para gravar o arquivo");
     } finally {
       setSaving(false);
     }
   }
 
   async function downloadDoc(doc: DocumentFile) {
-    const stored = await loadDocFile(doc.id);
+    const stored = await loadDocFile(doc.id, doc.storagePath);
     if (!stored) {
-      pushToast("Este item de demo não tem arquivo anexado");
+      pushToast(
+        doc.storagePath
+          ? "Não deu para baixar o arquivo"
+          : "Este item de demo não tem arquivo anexado",
+      );
       return;
     }
     downloadBlob(doc.fileName || doc.name, stored.blob);
   }
 
   async function remove(id: string) {
-    await deleteDocFile(id);
+    const doc = documents.find((item) => item.id === id);
+    await deleteDocFile(id, doc?.storagePath);
     removeDocument(id);
     if (viewer?.id === id) setViewer(null);
     if (sharing?.id === id) setSharing(null);
@@ -423,7 +432,7 @@ function DocumentPreview({
   useEffect(() => {
     let objectUrl = "";
     let alive = true;
-    loadDocFile(doc.id).then((stored) => {
+    loadDocFile(doc.id, doc.storagePath).then((stored) => {
       if (!alive) return;
       if (!stored) {
         setMissing(true);
@@ -436,7 +445,7 @@ function DocumentPreview({
       alive = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [doc.id]);
+  }, [doc.id, doc.storagePath]);
 
   if (missing || !doc.hasFile) {
     return (

@@ -1,3 +1,6 @@
+import { currentWorkspaceId, isOfficialCloud } from "@/services/core";
+import { dropWorkspaceFile, getWorkspaceFile, putWorkspaceFile } from "@/services/blobs";
+
 const DB_NAME = "orbio-docs";
 const STORE = "blobs";
 
@@ -5,6 +8,12 @@ type StoredDoc = {
   blob: Blob;
   mime: string;
   name: string;
+};
+
+export type SavedDoc = {
+  path?: string;
+  hash?: string;
+  size: number;
 };
 
 function openDb() {
@@ -32,15 +41,28 @@ function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => 
   );
 }
 
-export function saveDocFile(id: string, file: File) {
+export async function saveDocFile(id: string, file: File): Promise<SavedDoc> {
+  if (isOfficialCloud() && currentWorkspaceId()) {
+    const stored = await putWorkspaceFile("docs", id, file, file.name, file.type);
+    return { path: stored.path, hash: stored.hash, size: stored.size };
+  }
   const record: StoredDoc = { blob: file, mime: file.type || "application/octet-stream", name: file.name };
-  return withStore("readwrite", (store) => store.put(record, id));
+  await withStore("readwrite", (store) => store.put(record, id));
+  return { size: file.size };
 }
 
-export function loadDocFile(id: string) {
+export async function loadDocFile(id: string, storagePath?: string) {
+  if (storagePath) {
+    const blob = await getWorkspaceFile(storagePath);
+    if (!blob) return null;
+    return { blob, mime: blob.type, name: storagePath.split("/").pop() ?? id };
+  }
+  if (isOfficialCloud()) return null;
   return withStore<StoredDoc | undefined>("readonly", (store) => store.get(id)).then((row) => row ?? null);
 }
 
-export function deleteDocFile(id: string) {
-  return withStore("readwrite", (store) => store.delete(id)).then(() => undefined);
+export async function deleteDocFile(id: string, storagePath?: string) {
+  if (storagePath) await dropWorkspaceFile(storagePath);
+  if (isOfficialCloud()) return;
+  await withStore("readwrite", (store) => store.delete(id));
 }

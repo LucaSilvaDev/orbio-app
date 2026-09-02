@@ -110,6 +110,11 @@ export type Invoice = {
   status: InvoiceStatus;
   issuedAt: string;
   dueAt: string;
+  filePath?: string;
+  fileName?: string;
+  fileMime?: string;
+  fileHash?: string;
+  fileSize?: number;
 };
 
 export type Campaign = {
@@ -147,6 +152,9 @@ export type DocumentFile = {
   hasFile?: boolean;
   shareMode?: DocumentShareMode;
   sharedWith?: string[];
+  storagePath?: string;
+  sha256?: string;
+  sizeBytes?: number;
 };
 
 export type MailThread = {
@@ -168,7 +176,8 @@ export type ChatAttachment = {
   mime: string;
   size: number;
   kind: ChatAttachmentKind;
-  dataUrl: string;
+  dataUrl?: string;
+  storagePath?: string;
 };
 
 export type ChatThread = {

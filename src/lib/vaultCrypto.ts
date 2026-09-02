@@ -166,4 +166,21 @@ export async function decryptBytes(key: CryptoKey, cipher: VaultFileCipher) {
   return new Uint8Array(plain)
 }
 
+export function packVaultFile(cipher: VaultFileCipher) {
+  return new Blob(
+    [JSON.stringify({ iv: cipher.iv, data: bufToB64(cipher.data) })],
+    { type: "application/json" },
+  )
+}
+
+export async function unpackVaultFile(blob: Blob): Promise<VaultFileCipher> {
+  const parsed = JSON.parse(await blob.text()) as { iv?: string; data?: string }
+  if (!parsed.iv || !parsed.data) throw new Error("cofre file corrompido")
+  const bytes = b64ToBytes(parsed.data)
+  return {
+    iv: parsed.iv,
+    data: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+  }
+}
+
 export { MIN_PIN, MAX_PIN, ITERATIONS }
