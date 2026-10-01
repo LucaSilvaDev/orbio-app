@@ -65,7 +65,7 @@ export function ProductsPage() {
                 p.active ? "ativo" : "pausado",
               ])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Novo produto
             </Button>
           </>

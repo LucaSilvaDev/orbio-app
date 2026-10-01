@@ -153,7 +153,7 @@ export function PipelinePage() {
                 d.nextStep,
               ])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Novo deal
             </Button>
           </>

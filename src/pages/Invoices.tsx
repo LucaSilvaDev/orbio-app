@@ -80,7 +80,7 @@ export function InvoicesPage() {
                 label[i.status],
               ])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Nova fatura
             </Button>
           </>

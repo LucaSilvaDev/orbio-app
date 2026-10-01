@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 import { useUi, type LogoVariant } from "@/store/useUi";
 
@@ -5,7 +6,7 @@ export const LOGO_OPTIONS: { id: LogoVariant; label: string; note: string }[] = 
   { id: "orbit", label: "Órbita", note: "Núcleo + anel elíptico" },
   { id: "rings", label: "Anéis", note: "Dois raios em sentidos opostos" },
   { id: "pulse", label: "Sinal", note: "Ondas de radar saindo do centro" },
-  { id: "trio", label: "Trio", note: "Empresa, pessoa e deal" },
+  { id: "trio", label: "Trio", note: "Núcleo vivo + 3 órbitas" },
   { id: "loop", label: "Loop", note: "O de Orbio em traço contínuo" },
 ];
 
@@ -22,6 +23,7 @@ export function OrbMark({
 }) {
   const stored = useUi((s) => s.logoVariant);
   const kind = variant ?? stored;
+  const gid = useId().replace(/:/g, "");
 
   return (
     <svg
@@ -64,11 +66,31 @@ export function OrbMark({
       ) : null}
       {kind === "trio" ? (
         <>
-          <circle className="orb-path" cx="24" cy="24" r="15" />
-          <g className="orb-planets">
-            <circle className="orb-p3" cx="16.5" cy="11" r="3" />
-            <circle className="orb-p2" cx="11" cy="31.5" r="2.7" />
-            <circle className="orb-p1" cx="37" cy="31.5" r="2.9" />
+          <defs>
+            <radialGradient id={`${gid}-core`} cx="35%" cy="30%" r="80%">
+              <stop offset="0%" stopColor="#7dd3fc" />
+              <stop offset="55%" stopColor="#2563eb" />
+              <stop offset="100%" stopColor="#7c3aed" />
+            </radialGradient>
+          </defs>
+          {/* orbits */}
+          <circle className="orb-path orb-orbit-outer" cx="24" cy="24" r="17" />
+          <circle className="orb-path orb-orbit-inner" cx="24" cy="24" r="10.5" />
+          {/* sonar pulse from the core */}
+          <circle className="orb-wave orb-wave-a" cx="24" cy="24" r="6" />
+          {/* living core */}
+          <circle className="orb-halo" cx="24" cy="24" r="7.2" fill={`url(#${gid}-core)`} />
+          <circle className="orb-core-grad" cx="24" cy="24" r="4.4" fill={`url(#${gid}-core)`} />
+          {/* satellites: each one on its own orbit and speed */}
+          <g className="orb-sp orb-sp-a" style={{ "--phase": "-20deg" } as React.CSSProperties}>
+            <circle className="orb-trail" cx="24" cy="24" r="17" transform="rotate(-50 24 24)" />
+            <circle className="orb-p1" cx="41" cy="24" r="3" />
+          </g>
+          <g className="orb-sp orb-sp-b" style={{ "--phase": "140deg" } as React.CSSProperties}>
+            <circle className="orb-p3" cx="41" cy="24" r="2.5" />
+          </g>
+          <g className="orb-sp orb-sp-c" style={{ "--phase": "250deg" } as React.CSSProperties}>
+            <circle className="orb-p2" cx="34.5" cy="24" r="2.2" />
           </g>
         </>
       ) : null}

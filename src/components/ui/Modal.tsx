@@ -57,7 +57,7 @@ export function Modal({
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 id="orbio-modal-title" className="text-[18px] font-semibold tracking-[-0.02em]">
+                <h2 id="orbio-modal-title" className="!font-sans text-[18px] font-medium tracking-[-0.02em]">
                   {title}
                 </h2>
                 <button

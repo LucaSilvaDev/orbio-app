@@ -41,7 +41,7 @@ export function CampaignsPage() {
               headers={["Nome", "Canal", "Status", "Orçamento", "Gasto", "Leads", "Respostas"]}
               rows={campaigns.map((c) => [c.name, c.channel, c.status, c.budget, c.spent, c.leads, c.replies])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Nova campanha
             </Button>
           </>

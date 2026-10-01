@@ -1,14 +1,15 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-type Tone = "blue" | "mint" | "coral" | "amber" | "neutral";
+type Tone = "blue" | "mint" | "coral" | "amber" | "neutral" | "lime";
 
 const tones: Record<Tone, string> = {
-  blue: "bg-lavender-wash text-royal-signal",
-  mint: "bg-[#e9f8ef] text-[#177245]",
-  coral: "bg-[#fdeeee] text-[#b42318]",
-  amber: "bg-[#fff6e5] text-[#a15c07]",
-  neutral: "bg-fog-surface text-slate-caption",
+  blue: "bg-royal-signal/10 text-royal-signal [html[data-theme=dark]_&]:text-[#aab6ff]",
+  mint: "bg-[#2ee47a]/15 text-[#177245] [html[data-theme=dark]_&]:text-[#6fe9a4]",
+  coral: "bg-[#f04438]/12 text-[#b42318] [html[data-theme=dark]_&]:text-[#ff8f86]",
+  amber: "bg-[#f2ae40]/18 text-[#a15c07] [html[data-theme=dark]_&]:text-[#f7c167]",
+  neutral: "bg-midnight-ink/6 text-slate-caption",
+  lime: "bg-[var(--highlight)] text-[#1c1c1c]",
 };
 
 export function Badge({
@@ -23,7 +24,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[11px] font-medium",
         tones[tone],
         className,
       )}

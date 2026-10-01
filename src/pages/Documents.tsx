@@ -228,7 +228,7 @@ export function DocumentsPage() {
                 doc.updatedAt,
               ])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Novo arquivo
             </Button>
           </>

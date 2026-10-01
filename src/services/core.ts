@@ -1,5 +1,6 @@
 import type { Company, Contact, Deal, PipelineStage, DealPriority } from "@/types";
 import { getWorkspace } from "@/lib/workspace";
+import { guard } from "@/services/guard";
 import { supabase } from "@/services/supabase";
 
 let workspaceId: string | null = null;
@@ -17,7 +18,7 @@ function num(value: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function mapCompany(row: Record<string, unknown>): Company {
+export function mapCompany(row: Record<string, unknown>): Company {
   return {
     id: String(row.id),
     name: String(row.name ?? ""),
@@ -35,7 +36,7 @@ function mapCompany(row: Record<string, unknown>): Company {
   };
 }
 
-function mapContact(row: Record<string, unknown>): Contact {
+export function mapContact(row: Record<string, unknown>): Contact {
   return {
     id: String(row.id),
     name: String(row.name ?? ""),
@@ -51,7 +52,7 @@ function mapContact(row: Record<string, unknown>): Contact {
   };
 }
 
-function mapDeal(row: Record<string, unknown>): Deal {
+export function mapDeal(row: Record<string, unknown>): Deal {
   return {
     id: String(row.id),
     name: String(row.name ?? ""),
@@ -168,28 +169,28 @@ function dealRow(item: Deal) {
 export function persistCompany(item: Company, mode: "upsert" | "delete" = "upsert") {
   if (!isOfficialCloud() || !supabase || !workspaceId) return;
   if (mode === "delete") {
-    void supabase.from("companies").delete().eq("id", item.id);
+    guard(supabase.from("companies").delete().eq("id", item.id));
     return;
   }
-  void supabase.from("companies").upsert(companyRow(item));
+  guard(supabase.from("companies").upsert(companyRow(item)));
 }
 
 export function persistContact(item: Contact, mode: "upsert" | "delete" = "upsert") {
   if (!isOfficialCloud() || !supabase || !workspaceId) return;
   if (mode === "delete") {
-    void supabase.from("contacts").delete().eq("id", item.id);
+    guard(supabase.from("contacts").delete().eq("id", item.id));
     return;
   }
-  void supabase.from("contacts").upsert(contactRow(item));
+  guard(supabase.from("contacts").upsert(contactRow(item)));
 }
 
 export function persistDeal(item: Deal, mode: "upsert" | "delete" = "upsert") {
   if (!isOfficialCloud() || !supabase || !workspaceId) return;
   if (mode === "delete") {
-    void supabase.from("deals").delete().eq("id", item.id);
+    guard(supabase.from("deals").delete().eq("id", item.id));
     return;
   }
-  void supabase.from("deals").upsert(dealRow(item));
+  guard(supabase.from("deals").upsert(dealRow(item)));
 }
 
 export function persistDealPatch(id: string, data: Partial<Deal>) {
@@ -207,7 +208,7 @@ export function persistDealPatch(id: string, data: Partial<Deal>) {
   if (data.source !== undefined) patch.source = data.source;
   if (data.nextStep !== undefined) patch.next_step = data.nextStep;
   patch.updated_at = new Date().toISOString();
-  void supabase.from("deals").update(patch).eq("id", id);
+  guard(supabase.from("deals").update(patch).eq("id", id));
 }
 
 export function persistContactPatch(id: string, data: Partial<Contact>) {
@@ -223,7 +224,7 @@ export function persistContactPatch(id: string, data: Partial<Contact>) {
   if (data.lastTouch !== undefined) patch.last_touch = data.lastTouch;
   if (data.score !== undefined) patch.score = data.score;
   if (data.tags !== undefined) patch.tags = data.tags;
-  void supabase.from("contacts").update(patch).eq("id", id);
+  guard(supabase.from("contacts").update(patch).eq("id", id));
 }
 
 export function persistCompanyPatch(id: string, data: Partial<Company>) {
@@ -240,7 +241,7 @@ export function persistCompanyPatch(id: string, data: Partial<Company>) {
   if (data.health !== undefined) patch.health = data.health;
   if (data.ownerId !== undefined) patch.owner_id = data.ownerId || null;
   if (data.tags !== undefined) patch.tags = data.tags;
-  void supabase.from("companies").update(patch).eq("id", id);
+  guard(supabase.from("companies").update(patch).eq("id", id));
 }
 
 export function newEntityId() {

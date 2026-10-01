@@ -53,7 +53,7 @@ export function ContactsPage() {
                 c.score,
               ])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Novo contato
             </Button>
           </>

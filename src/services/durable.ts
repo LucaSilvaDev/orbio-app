@@ -9,6 +9,7 @@ import type {
   InvoiceStatus,
 } from "@/types";
 import { currentWorkspaceId, isOfficialCloud } from "@/services/core";
+import { guard } from "@/services/guard";
 import { supabase } from "@/services/supabase";
 
 let durableReady = false;
@@ -26,7 +27,7 @@ function uuidOrNull(value: string | undefined) {
   return /^[0-9a-f-]{36}$/i.test(value) ? value : null;
 }
 
-function mapDocument(row: Record<string, unknown>): DocumentFile {
+export function mapDocument(row: Record<string, unknown>): DocumentFile {
   const share = row.share_mode;
   return {
     id: String(row.id),
@@ -50,7 +51,7 @@ function mapDocument(row: Record<string, unknown>): DocumentFile {
   };
 }
 
-function mapInvoice(row: Record<string, unknown>): Invoice {
+export function mapInvoice(row: Record<string, unknown>): Invoice {
   return {
     id: String(row.id),
     number: String(row.number ?? ""),
@@ -68,7 +69,7 @@ function mapInvoice(row: Record<string, unknown>): Invoice {
   };
 }
 
-function mapThread(row: Record<string, unknown>): ChatThread {
+export function mapThread(row: Record<string, unknown>): ChatThread {
   return {
     id: String(row.id),
     kind: row.kind === "channel" ? "channel" : "dm",
@@ -94,7 +95,7 @@ function mapAttachment(raw: unknown): ChatAttachment {
   };
 }
 
-function mapMessage(row: Record<string, unknown>): ChatMessage {
+export function mapMessage(row: Record<string, unknown>): ChatMessage {
   return {
     id: String(row.id),
     threadId: String(row.thread_id),
@@ -207,10 +208,10 @@ function messageRow(item: ChatMessage) {
 export function persistDocument(item: DocumentFile, mode: "upsert" | "delete" = "upsert") {
   if (!isOfficialCloud() || !supabase || !currentWorkspaceId()) return;
   if (mode === "delete") {
-    void supabase.from("documents").delete().eq("id", item.id);
+    guard(supabase.from("documents").delete().eq("id", item.id));
     return;
   }
-  void supabase.from("documents").upsert(documentRow(item));
+  guard(supabase.from("documents").upsert(documentRow(item)));
 }
 
 export function persistDocumentPatch(id: string, data: Partial<DocumentFile>) {
@@ -228,16 +229,16 @@ export function persistDocumentPatch(id: string, data: Partial<DocumentFile>) {
   if (data.sha256 !== undefined) patch.sha256 = data.sha256;
   if (data.shareMode !== undefined) patch.share_mode = data.shareMode;
   if (data.sharedWith !== undefined) patch.shared_with = data.sharedWith;
-  void supabase.from("documents").update(patch).eq("id", id);
+  guard(supabase.from("documents").update(patch).eq("id", id));
 }
 
 export function persistInvoice(item: Invoice, mode: "upsert" | "delete" = "upsert") {
   if (!isOfficialCloud() || !supabase || !currentWorkspaceId()) return;
   if (mode === "delete") {
-    void supabase.from("invoices").delete().eq("id", item.id);
+    guard(supabase.from("invoices").delete().eq("id", item.id));
     return;
   }
-  void supabase.from("invoices").upsert(invoiceRow(item));
+  guard(supabase.from("invoices").upsert(invoiceRow(item)));
 }
 
 export function persistInvoicePatch(id: string, data: Partial<Invoice>) {
@@ -255,19 +256,19 @@ export function persistInvoicePatch(id: string, data: Partial<Invoice>) {
   if (data.fileMime !== undefined) patch.file_mime = data.fileMime;
   if (data.fileHash !== undefined) patch.file_hash = data.fileHash;
   if (data.fileSize !== undefined) patch.file_size = data.fileSize;
-  void supabase.from("invoices").update(patch).eq("id", id);
+  guard(supabase.from("invoices").update(patch).eq("id", id));
 }
 
 export function persistThread(item: ChatThread, mode: "upsert" | "delete" = "upsert") {
   if (!isOfficialCloud() || !supabase || !currentWorkspaceId()) return;
   if (mode === "delete") {
-    void supabase.from("chat_threads").delete().eq("id", item.id);
+    guard(supabase.from("chat_threads").delete().eq("id", item.id));
     return;
   }
-  void supabase.from("chat_threads").upsert(threadRow(item));
+  guard(supabase.from("chat_threads").upsert(threadRow(item)));
 }
 
 export function persistMessage(item: ChatMessage) {
   if (!isOfficialCloud() || !supabase || !currentWorkspaceId()) return;
-  void supabase.from("chat_messages").upsert(messageRow(item));
+  guard(supabase.from("chat_messages").upsert(messageRow(item)));
 }

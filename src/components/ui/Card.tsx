@@ -5,16 +5,20 @@ export function Card({
   className,
   children,
   padded = true,
+  tone = "glass",
 }: {
   className?: string;
   children: ReactNode;
   padded?: boolean;
+  /** `glass` = frosted default · `ink` = dark hero card (Finexa-style) */
+  tone?: "glass" | "ink";
 }) {
   return (
     <div
       className={cn(
-        "rounded-pipeline bg-snow-canvas/80 shadow-card backdrop-blur-xl",
-        padded && "p-4",
+        "glass rounded-[26px]",
+        tone === "ink" && "glass--ink",
+        padded && "p-5",
         className,
       )}
     >
@@ -31,7 +35,7 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className={cn("rounded-container bg-snow-canvas/80 p-8 shadow-lift backdrop-blur-xl", className)}>
+    <section className={cn("glass rounded-container p-8", className)}>
       {children}
     </section>
   );

@@ -1,7 +1,7 @@
 import { currentWorkspaceId, isOfficialCloud } from "@/services/core";
 import { supabase } from "@/services/supabase";
 
-export async function createInvite(email: string): Promise<{ token?: string; error?: string }> {
+export async function createInvite(email: string, role = "sales"): Promise<{ token?: string; error?: string }> {
   if (!isOfficialCloud() || !supabase) {
     return { error: "Convite só existe no workspace de produção." };
   }
@@ -13,9 +13,10 @@ export async function createInvite(email: string): Promise<{ token?: string; err
     workspace_id: wid,
     email: email.trim().toLowerCase(),
     token,
+    role,
     invited_by: (await supabase.auth.getUser()).data.user?.id ?? null,
   });
-  if (error) return { error: "Não deu para criar o convite. Só o dono do workspace convida." };
+  if (error) return { error: "Não deu para criar o convite. Só dono e administradores convidam." };
   return { token };
 }
 

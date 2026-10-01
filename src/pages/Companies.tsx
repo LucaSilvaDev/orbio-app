@@ -49,7 +49,7 @@ export function CompaniesPage() {
               headers={["Nome", "CNPJ", "Domínio", "Setor", "Cidade", "ARR", "Saúde"]}
               rows={rows.map((c) => [c.name, c.cnpj ?? "", c.domain, c.industry, c.city, c.arr, c.health])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Nova empresa
             </Button>
           </>

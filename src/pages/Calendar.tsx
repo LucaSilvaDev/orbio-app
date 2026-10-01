@@ -73,7 +73,7 @@ export function CalendarPage() {
               Próximo
             </Button>
             <ExportMenu title="agenda-orbio" headers={["Título", "Quando", "Tipo"]} rows={allRows} />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Novo compromisso
             </Button>
           </>

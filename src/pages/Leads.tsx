@@ -56,7 +56,7 @@ export function LeadsPage() {
               headers={["Nome", "Empresa", "E-mail", "Telefone", "Origem", "Score", "Status"]}
               rows={rows.map((l) => [l.name, l.company, l.email, l.phone ?? "", l.source, l.score, label[l.status]])}
             />
-            <Button variant="dark" onClick={() => setOpen(true)}>
+            <Button variant="dark" data-write onClick={() => setOpen(true)}>
               Novo lead
             </Button>
           </>

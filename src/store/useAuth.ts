@@ -132,6 +132,10 @@ export const useAuth = create<AuthState>((set) => ({
     if (!supabase) {
       return { error: "Supabase não está configurado neste ambiente.", needsConfirmation: false };
     }
+    if (!sessionStorage.getItem("orbio-invite")) {
+      return { error: "Acesso só por convite do workspace.", needsConfirmation: false };
+    }
+
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedName || !trimmedEmail || password.length < 6) {

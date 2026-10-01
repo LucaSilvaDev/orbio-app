@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
   activities as seedActivities,
@@ -44,6 +44,8 @@ import type {
   Reminder,
 } from "@/types";
 import { uid } from "@/lib/cn";
+import { can, ROLE_LABEL, usePermissions, type Area } from "@/store/usePermissions";
+import { useUi } from "@/store/useUi";
 import { getWorkspace, workspaceStorage } from "@/lib/workspace";
 import {
   persistCompany,
@@ -62,6 +64,14 @@ import {
   persistMessage,
   persistThread,
 } from "@/services/durable";
+import {
+  ITEM_KINDS,
+  isItemsReady,
+  persistItem,
+  type AnyItem,
+  type ItemKey,
+  type ItemsPayload,
+} from "@/services/items";
 
 function patch<T extends { id: string }>(list: T[], id: string, data: Partial<T>) {
   return list.map((item) => (item.id === id ? { ...item, ...data } : item));
@@ -73,6 +83,59 @@ function drop<T extends { id: string }>(list: T[], id: string) {
 
 function nextId(prefix: string) {
   return getWorkspace() === "official" ? crypto.randomUUID() : uid(prefix);
+}
+
+/** Pushes the current version of one record of a cloud-synced module to the database. */
+function sync(key: ItemKey, id: string) {
+  const item = (useCrm.getState()[key] as unknown as AnyItem[]).find((entry) => entry.id === id);
+  if (item) persistItem(key, item);
+}
+
+function remove(key: ItemKey, id: string) {
+  persistItem(key, { id }, "delete");
+}
+
+// Which role area each mutating action needs. Chat, reading mail and marking things read stay open.
+const ACTION_AREA: Record<string, Area> = {
+  moveDeal: "crm", updateDeal: "crm", removeDeal: "crm", addDeal: "crm", convertLead: "crm",
+  addContact: "crm", updateContact: "crm", removeContact: "crm",
+  addCompany: "crm", updateCompany: "crm", removeCompany: "crm",
+  addInvoice: "finance", updateInvoice: "finance", removeInvoice: "finance",
+  toggleActivity: "any", removeActivity: "any", addActivity: "any",
+  addNote: "any", togglePinNote: "any", removeNote: "any",
+  addLead: "any", updateLead: "any", removeLead: "any",
+  addProduct: "any", updateProduct: "any", removeProduct: "any",
+  addCampaign: "any", updateCampaign: "any", removeCampaign: "any",
+  addDocument: "any", updateDocument: "any", removeDocument: "any",
+  addReminder: "any", toggleReminder: "any", removeReminder: "any",
+  addEvent: "any", removeEvent: "any",
+  addMapNode: "any", moveMapNode: "any", updateMapNode: "any", removeMapNode: "any", addFlowEdge: "any",
+};
+
+/**
+ * Wraps every mutating action: if the signed-in role isn't allowed (viewer editing,
+ * salesperson touching invoices…) nothing changes locally and the user is told why.
+ * Without this the screen would update while the database quietly refused the write.
+ */
+type Creator = StateCreator<CrmState, [["zustand/persist", unknown]], []>;
+
+function guarded(creator: Creator): Creator {
+  return (set, get, api) => {
+    const state = creator(set, get, api) as unknown as Record<string, unknown>;
+    for (const [name, area] of Object.entries(ACTION_AREA)) {
+      const original = state[name];
+      if (typeof original !== "function") continue;
+      state[name] = (...args: unknown[]) => {
+        const role = usePermissions.getState().role;
+        if (!can(role, area)) {
+          useUi.getState().pushToast(`Seu papel (${role ? ROLE_LABEL[role] : "—"}) não permite esta ação.`);
+          return name.startsWith("add") && name !== "addFlowEdge" ? "" : undefined;
+        }
+        return (original as (...a: unknown[]) => unknown)(...args);
+      };
+    }
+    return state as unknown as CrmState;
+  };
 }
 
 type CrmState = {
@@ -103,6 +166,7 @@ type CrmState = {
     invoices?: Invoice[];
     threads?: ChatThread[];
     messages?: ChatMessage[];
+    items?: ItemsPayload;
   }) => void;
   moveDeal: (id: string, stage: PipelineStage) => void;
   updateDeal: (id: string, data: Partial<Deal>) => void;
@@ -207,7 +271,7 @@ const emptyCrm = {
 
 export const useCrm = create<CrmState>()(
   persist(
-    (set, get) => ({
+    guarded((set, get) => ({
       ...(getWorkspace() === "official" ? emptyCrm : seededCrm),
       hydrateCore: (payload) =>
         set({
@@ -218,6 +282,13 @@ export const useCrm = create<CrmState>()(
           ...(payload.invoices ? { invoices: payload.invoices } : {}),
           ...(payload.threads ? { threads: payload.threads } : {}),
           ...(payload.messages ? { messages: payload.messages } : {}),
+          ...(payload.items
+            ? Object.fromEntries(
+                (Object.keys(ITEM_KINDS) as ItemKey[])
+                  .filter((key) => payload.items?.[key])
+                  .map((key) => [key, payload.items![key]]),
+              )
+            : {}),
         }),
       moveDeal: (id, stage) => {
         const deals = get().deals.map((deal) =>
@@ -243,13 +314,18 @@ export const useCrm = create<CrmState>()(
         set({ deals: drop(get().deals, id) });
         if (row) persistDeal(row, "delete");
       },
-      toggleActivity: (id) =>
+      toggleActivity: (id) => {
         set({
           activities: get().activities.map((item) =>
             item.id === id ? { ...item, done: !item.done } : item,
           ),
-        }),
-      removeActivity: (id) => set({ activities: drop(get().activities, id) }),
+        });
+        sync("activities", id);
+      },
+      removeActivity: (id) => {
+        set({ activities: drop(get().activities, id) });
+        remove("activities", id);
+      },
       markMailRead: (id) =>
         set({
           inbox: get().inbox.map((mail) =>
@@ -333,28 +409,39 @@ export const useCrm = create<CrmState>()(
         persistThread(row);
         return id;
       },
-      markAllNotifications: (userId) =>
+      markAllNotifications: (userId) => {
+        const changed: string[] = [];
         set({
           notifications: get().notifications.map((item) => {
             const mine = !item.userId || item.userId === userId;
+            if (mine && !item.read) changed.push(item.id);
             return mine ? { ...item, read: true } : item;
           }),
-        }),
-      addNotification: (item) =>
-        set({
-          notifications: [{ ...item, id: uid("n") }, ...get().notifications],
-        }),
-      addNote: (note) =>
-        set({
-          notes: [{ ...note, id: uid("nt"), createdAt: new Date().toISOString() }, ...get().notes],
-        }),
-      togglePinNote: (id) =>
+        });
+        changed.forEach((id) => sync("notifications", id));
+      },
+      addNotification: (item) => {
+        const row = { ...item, id: nextId("n") };
+        set({ notifications: [row, ...get().notifications] });
+        persistItem("notifications", row);
+      },
+      addNote: (note) => {
+        const row = { ...note, id: nextId("nt"), createdAt: new Date().toISOString() };
+        set({ notes: [row, ...get().notes] });
+        persistItem("notes", row);
+      },
+      togglePinNote: (id) => {
         set({
           notes: get().notes.map((item) =>
             item.id === id ? { ...item, pinned: !item.pinned } : item,
           ),
-        }),
-      removeNote: (id) => set({ notes: drop(get().notes, id) }),
+        });
+        sync("notes", id);
+      },
+      removeNote: (id) => {
+        set({ notes: drop(get().notes, id) });
+        remove("notes", id);
+      },
       addContact: (contact) => {
         const row = { ...contact, id: nextId("c") };
         set({ contacts: [row, ...get().contacts] });
@@ -388,12 +475,19 @@ export const useCrm = create<CrmState>()(
         set({ deals: [row, ...get().deals] });
         persistDeal(row);
       },
-      addLead: (lead) =>
-        set({
-          leads: [{ ...lead, id: uid("l"), createdAt: new Date().toISOString() }, ...get().leads],
-        }),
-      updateLead: (id, data) => set({ leads: patch(get().leads, id, data) }),
-      removeLead: (id) => set({ leads: drop(get().leads, id) }),
+      addLead: (lead) => {
+        const row = { ...lead, id: nextId("l"), createdAt: new Date().toISOString() };
+        set({ leads: [row, ...get().leads] });
+        persistItem("leads", row);
+      },
+      updateLead: (id, data) => {
+        set({ leads: patch(get().leads, id, data) });
+        sync("leads", id);
+      },
+      removeLead: (id) => {
+        set({ leads: drop(get().leads, id) });
+        remove("leads", id);
+      },
       convertLead: (id) => {
         const lead = get().leads.find((item) => item.id === id);
         if (!lead) return;
@@ -451,13 +545,26 @@ export const useCrm = create<CrmState>()(
         persistCompany(company);
         persistContact(contact);
         persistDeal(deal);
+        sync("leads", id);
       },
-      addActivity: (activity) =>
-        set({ activities: [{ ...activity, id: uid("a") }, ...get().activities] }),
-      addProduct: (product) =>
-        set({ products: [{ ...product, id: uid("p") }, ...get().products] }),
-      updateProduct: (id, data) => set({ products: patch(get().products, id, data) }),
-      removeProduct: (id) => set({ products: drop(get().products, id) }),
+      addActivity: (activity) => {
+        const row = { ...activity, id: nextId("a") };
+        set({ activities: [row, ...get().activities] });
+        persistItem("activities", row);
+      },
+      addProduct: (product) => {
+        const row = { ...product, id: nextId("p") };
+        set({ products: [row, ...get().products] });
+        persistItem("products", row);
+      },
+      updateProduct: (id, data) => {
+        set({ products: patch(get().products, id, data) });
+        sync("products", id);
+      },
+      removeProduct: (id) => {
+        set({ products: drop(get().products, id) });
+        remove("products", id);
+      },
       addInvoice: (invoice) => {
         const row = { ...invoice, id: nextId("i") };
         set({ invoices: [row, ...get().invoices] });
@@ -473,10 +580,19 @@ export const useCrm = create<CrmState>()(
         set({ invoices: drop(get().invoices, id) });
         if (row) persistInvoice(row, "delete");
       },
-      addCampaign: (campaign) =>
-        set({ campaigns: [{ ...campaign, id: uid("cp") }, ...get().campaigns] }),
-      updateCampaign: (id, data) => set({ campaigns: patch(get().campaigns, id, data) }),
-      removeCampaign: (id) => set({ campaigns: drop(get().campaigns, id) }),
+      addCampaign: (campaign) => {
+        const row = { ...campaign, id: nextId("cp") };
+        set({ campaigns: [row, ...get().campaigns] });
+        persistItem("campaigns", row);
+      },
+      updateCampaign: (id, data) => {
+        set({ campaigns: patch(get().campaigns, id, data) });
+        sync("campaigns", id);
+      },
+      removeCampaign: (id) => {
+        set({ campaigns: drop(get().campaigns, id) });
+        remove("campaigns", id);
+      },
       addDocument: (doc) => {
         const id = doc.id ?? nextId("doc");
         const row: DocumentFile = {
@@ -500,60 +616,82 @@ export const useCrm = create<CrmState>()(
         set({ documents: drop(get().documents, id) });
         if (row) persistDocument(row, "delete");
       },
-      addReminder: (item) =>
-        set({ reminders: [{ ...item, id: uid("r") }, ...get().reminders] }),
-      toggleReminder: (id) =>
+      addReminder: (item) => {
+        const row = { ...item, id: nextId("r") };
+        set({ reminders: [row, ...get().reminders] });
+        persistItem("reminders", row);
+      },
+      toggleReminder: (id) => {
         set({
           reminders: get().reminders.map((item) =>
             item.id === id ? { ...item, done: !item.done } : item,
           ),
-        }),
-      removeReminder: (id) => set({ reminders: drop(get().reminders, id) }),
-      addEvent: (item) =>
-        set({ calendarEvents: [{ ...item, id: uid("e") }, ...get().calendarEvents] }),
-      removeEvent: (id) => set({ calendarEvents: drop(get().calendarEvents, id) }),
+        });
+        sync("reminders", id);
+      },
+      removeReminder: (id) => {
+        set({ reminders: drop(get().reminders, id) });
+        remove("reminders", id);
+      },
+      addEvent: (item) => {
+        const row = { ...item, id: nextId("e") };
+        set({ calendarEvents: [row, ...get().calendarEvents] });
+        persistItem("calendarEvents", row);
+      },
+      removeEvent: (id) => {
+        set({ calendarEvents: drop(get().calendarEvents, id) });
+        remove("calendarEvents", id);
+      },
       addMapNode: (scope, node) => {
-        const id = uid(scope === "flow" ? "fn" : "mn");
-        if (scope === "flow") set({ flowNodes: [...get().flowNodes, { ...node, id }] });
-        else set({ mindNodes: [...get().mindNodes, { ...node, id }] });
+        const id = nextId(scope === "flow" ? "fn" : "mn");
+        const key = scope === "flow" ? "flowNodes" : "mindNodes";
+        set({ [key]: [...get()[key], { ...node, id }] } as Partial<CrmState>);
+        sync(key, id);
         return id;
       },
       moveMapNode: (scope, id, x, y) => {
-        if (scope === "flow") set({ flowNodes: patch(get().flowNodes, id, { x, y }) });
-        else set({ mindNodes: patch(get().mindNodes, id, { x, y }) });
+        const key = scope === "flow" ? "flowNodes" : "mindNodes";
+        set({ [key]: patch(get()[key], id, { x, y }) } as Partial<CrmState>);
+        sync(key, id);
       },
       updateMapNode: (scope, id, data) => {
-        if (scope === "flow") set({ flowNodes: patch(get().flowNodes, id, data) });
-        else set({ mindNodes: patch(get().mindNodes, id, data) });
+        const key = scope === "flow" ? "flowNodes" : "mindNodes";
+        set({ [key]: patch(get()[key], id, data) } as Partial<CrmState>);
+        sync(key, id);
       },
       removeMapNode: (scope, id) => {
         if (scope === "flow") {
+          const edges = get().flowEdges.filter((e) => e.from === id || e.to === id);
           set({
             flowNodes: drop(get().flowNodes, id),
             flowEdges: get().flowEdges.filter((e) => e.from !== id && e.to !== id),
           });
+          edges.forEach((edge) => remove("flowEdges", edge.id));
+          remove("flowNodes", id);
         } else {
           set({ mindNodes: drop(get().mindNodes, id) });
+          remove("mindNodes", id);
         }
       },
-      addFlowEdge: (from, to) =>
-        set({ flowEdges: [...get().flowEdges, { id: uid("fe"), from, to }] }),
-    }),
+      addFlowEdge: (from, to) => {
+        const row = { id: nextId("fe"), from, to };
+        set({ flowEdges: [...get().flowEdges, row] });
+        persistItem("flowEdges", row);
+      },
+    })),
     {
       name: "orbio-crm-v2",
       storage: createJSONStorage(() => workspaceStorage),
       partialize: (state) => {
         if (getWorkspace() !== "official") return state;
         const { companies: _c, contacts: _p, deals: _d, ...rest } = state;
-        if (!isDurableReady()) return rest;
-        const {
-          documents: _docs,
-          invoices: _inv,
-          threads: _th,
-          messages: _msg,
-          ...local
-        } = rest;
-        return local;
+        // Whatever the cloud already holds is not duplicated in this browser's storage.
+        const kept: Record<string, unknown> = { ...rest };
+        if (isItemsReady()) for (const key of Object.keys(ITEM_KINDS)) delete kept[key];
+        if (isDurableReady()) {
+          for (const key of ["documents", "invoices", "threads", "messages"]) delete kept[key];
+        }
+        return kept as typeof rest;
       },
       merge: (persisted, current) => {
         try {

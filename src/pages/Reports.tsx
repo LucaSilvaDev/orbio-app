@@ -1,118 +1,144 @@
-import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/Card";
-import { ExportMenu } from "@/components/ui/ExportMenu";
-import { useCrm } from "@/store/useCrm";
-import { sourceSeries } from "@/data/seed";
-import { getWorkspace } from "@/lib/workspace";
-import { brl } from "@/lib/cn";
+import { useState } from "react";
 import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { STAGES } from "@/lib/stages";
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { Check, Pencil, Plus, RotateCcw } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ExportMenu } from "@/components/ui/ExportMenu";
+import { Button } from "@/components/ui/Button";
+import { WidgetCard } from "@/components/reports/WidgetCard";
+import { WidgetEditor } from "@/components/reports/WidgetEditor";
+import { useCrm } from "@/store/useCrm";
+import { useReports } from "@/store/useReports";
 import { useUi } from "@/store/useUi";
+import { runWidget, type Widget } from "@/lib/reportEngine";
 
 export function ReportsPage() {
-  const { deals, invoices, campaigns, leads } = useCrm();
-  const accent = useUi((s) => s.accent);
-  const origin =
-    getWorkspace() === "official"
-      ? Object.entries(
-          deals.reduce<Record<string, number>>((acc, deal) => {
-            const key = deal.source || "Sem origem";
-            acc[key] = (acc[key] ?? 0) + 1;
-            return acc;
-          }, {}),
-        ).map(([name, value]) => ({ name, value }))
-      : sourceSeries;
-  const pieColors = [accent, "#ff9efa", "#6647f0", "#a5a2a5", "#f1f0ec"];
-  const won = deals.filter((d) => d.stage === "won").reduce((s, d) => s + d.value, 0);
-  const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost").reduce((s, d) => s + d.value, 0);
-  const stageData = STAGES.map((stage) => ({
-    name: stage.label,
-    value: deals.filter((d) => d.stage === stage.id).reduce((s, d) => s + d.value, 0) / 1000,
-  }));
+  const { widgets, addWidget, updateWidget, removeWidget, moveWidget, resetWidgets } = useReports();
+  const { deals, campaigns } = useCrm();
+  const pushToast = useUi((s) => s.pushToast);
+  const [editing, setEditing] = useState(false);
+  const [editor, setEditor] = useState<{ open: boolean; widget: Widget | null }>({ open: false, widget: null });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (over && active.id !== over.id) moveWidget(String(active.id), String(over.id));
+  };
+
+  const crm = useCrm.getState();
+  const exportRows = () =>
+    widgets.flatMap((w) => {
+      const r = runWidget(w, crm);
+      return r.series.length
+        ? r.series.map((p) => [w.title, p.name, Math.round(p.value * 100) / 100])
+        : [[w.title, r.measureLabel, Math.round(r.total * 100) / 100]];
+    });
 
   return (
     <div>
       <PageHeader
         kicker="Receita"
         title="Relatórios"
-        description="Uma leitura honesta do funil, da origem e do caixa."
+        description="Monte o seu painel: arraste, redimensione e escolha os gráficos — sem escrever SQL."
         actions={
-          <ExportMenu
-            title="relatorio-orbio"
-            headers={["Deal", "Estágio", "Valor", "Probabilidade"]}
-            rows={deals.map((d) => [d.name, d.stage, d.value, d.probability])}
-          />
+          <>
+            <ExportMenu title="relatorio-orbio" headers={["Gráfico", "Categoria", "Valor"]} rows={exportRows()} />
+            {editing ? (
+              <Button
+                size="md"
+                variant="outline"
+                onClick={() => {
+                  if (window.confirm("Restaurar o painel padrão? Seus gráficos personalizados serão removidos.")) {
+                    resetWidgets();
+                    pushToast("Painel restaurado");
+                  }
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Restaurar
+              </Button>
+            ) : null}
+            <button
+              type="button"
+              data-write
+              onClick={() => {
+                setEditor({ open: true, widget: null });
+                setEditing(true);
+              }}
+              className="inline-flex h-10 items-center gap-1.5 rounded-pill bg-[var(--highlight)] px-4 text-[13px] font-medium text-[#1c1c1c] shadow-[0_12px_26px_-14px_rgb(120,140,0)] transition-transform hover:-translate-y-px"
+            >
+              <Plus className="h-3.5 w-3.5" /> Adicionar gráfico
+            </button>
+            <Button data-write variant={editing ? "dark" : "outline"} onClick={() => setEditing((v) => !v)}>
+              {editing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+              {editing ? "Concluir" : "Editar painel"}
+            </Button>
+          </>
         }
       />
-      <div className="mb-4 grid gap-3 md:grid-cols-4">
-        <Card>
-          <p className="text-[12px] text-ash-helper">Ganho</p>
-          <p className="font-mono text-[22px]">{brl.format(won)}</p>
-        </Card>
-        <Card>
-          <p className="text-[12px] text-ash-helper">Aberto</p>
-          <p className="font-mono text-[22px]">{brl.format(open)}</p>
-        </Card>
-        <Card>
-          <p className="text-[12px] text-ash-helper">Faturas</p>
-          <p className="font-mono text-[22px]">{invoices.length}</p>
-        </Card>
-        <Card>
-          <p className="text-[12px] text-ash-helper">Leads no funil</p>
-          <p className="font-mono text-[22px]">{leads.length}</p>
-        </Card>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="mb-4 font-semibold">Valor por estágio</h2>
-          <div className="h-64">
-            <ResponsiveContainer>
-              <BarChart data={stageData}>
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                <Tooltip />
-                <Bar dataKey="value" fill={accent} radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card className="p-5">
-          <h2 className="mb-4 font-semibold">Origem das oportunidades</h2>
-          <div className="h-64">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={origin.length ? origin : [{ name: "Sem dados", value: 1 }]} dataKey="value" nameKey="name" innerRadius={58} outerRadius={90} paddingAngle={3}>
-                  {(origin.length ? origin : [{ name: "Sem dados", value: 1 }]).map((_, i) => (
-                    <Cell key={i} fill={pieColors[i % pieColors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-3 text-[12px] text-slate-caption">
-            {(origin.length ? origin : [{ name: "Sem dados", value: 1 }]).map((item, i) => (
-              <span key={item.name} className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: pieColors[i] }} />
-                {item.name}
-              </span>
-            ))}
-          </div>
-        </Card>
-      </div>
-      <p className="mt-4 text-[12px] text-ash-helper">
-        {campaigns.filter((c) => c.status === "active").length} campanhas ativas neste ciclo.
+
+      {editing ? (
+        <p className="mb-4 rounded-[18px] bg-royal-signal/8 px-4 py-2.5 text-[12px] text-slate-caption">
+          Modo de edição: arraste pela alça <span className="font-medium">⋮⋮</span> para reordenar, use o ícone de colunas para mudar a largura e o lápis para configurar. As alterações são salvas automaticamente.
+        </p>
+      ) : null}
+
+      {widgets.length ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {widgets.map((widget) => (
+                <WidgetCard
+                  key={widget.id}
+                  widget={widget}
+                  editing={editing}
+                  onEdit={() => setEditor({ open: true, widget })}
+                  onRemove={() => {
+                    if (window.confirm(`Remover "${widget.title}" do painel?`)) removeWidget(widget.id);
+                  }}
+                  onResize={() => updateWidget(widget.id, { span: (widget.span % 4 + 1) as Widget["span"] })}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className="glass flex flex-col items-center gap-3 rounded-[26px] px-6 py-16 text-center">
+          <p className="app-display text-[26px] text-midnight-ink">Painel em branco</p>
+          <p className="max-w-sm text-[13px] text-slate-caption">
+            Adicione o primeiro gráfico escolhendo a fonte, a métrica e o tipo de visualização.
+          </p>
+          <Button variant="dark" onClick={() => setEditor({ open: true, widget: null })}>
+            <Plus className="h-3.5 w-3.5" /> Adicionar gráfico
+          </Button>
+        </div>
+      )}
+
+      <p className="mt-5 text-[12px] text-ash-helper">
+        {campaigns.filter((c) => c.status === "active").length} campanhas ativas neste ciclo · {deals.length} oportunidades analisadas.
       </p>
+
+      <WidgetEditor
+        open={editor.open}
+        initial={editor.widget}
+        onClose={() => setEditor({ open: false, widget: null })}
+        onSave={(draft) => {
+          if (editor.widget) updateWidget(editor.widget.id, draft);
+          else addWidget(draft);
+          setEditor({ open: false, widget: null });
+          pushToast(editor.widget ? "Gráfico atualizado" : "Gráfico adicionado");
+        }}
+      />
     </div>
   );
 }

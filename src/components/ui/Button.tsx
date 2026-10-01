@@ -10,10 +10,12 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variants: Record<Variant, string> = {
   ghost: "bg-transparent text-graphite-body hover:bg-fog-surface",
-  outline: "bg-fog-surface/80 text-graphite-body hover:bg-fog-surface",
-  dark: "bg-midnight-ink text-snow-canvas hover:opacity-90",
-  accent: "bg-royal-signal text-white hover:opacity-90",
-  soft: "bg-fog-surface text-graphite-body hover:bg-lavender-wash",
+  outline:
+    "glass text-graphite-body hover:bg-snow-canvas/90 hover:-translate-y-px",
+  dark: "bg-midnight-ink text-snow-canvas shadow-[0_12px_24px_-14px_var(--ink)] hover:opacity-90",
+  accent:
+    "bg-royal-signal text-white shadow-[0_12px_26px_-12px_var(--accent)] hover:opacity-90 hover:-translate-y-px",
+  soft: "bg-midnight-ink/6 text-graphite-body hover:bg-midnight-ink/10",
 };
 
 export function Button({

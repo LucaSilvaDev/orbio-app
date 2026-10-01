@@ -54,7 +54,7 @@ export function ActivitiesPage() {
                 findUser(a.ownerId)?.name ?? "",
               ])}
             />
-            <Button variant="dark" onClick={() => setModal(true)}>
+            <Button variant="dark" data-write onClick={() => setModal(true)}>
               Nova tarefa
             </Button>
           </>

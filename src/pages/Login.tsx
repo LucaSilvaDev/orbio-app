@@ -16,21 +16,22 @@ export function LoginPage() {
   const signingIn = useAuth((s) => s.signingIn);
   const mode = getWorkspace();
   const isQa = mode === "demo";
-  const [panel, setPanel] = useState<"login" | "register">("login");
+  const [invited, setInvited] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState(mode === "demo" ? "ana@orbio.app.br" : "");
   const [password, setPassword] = useState(mode === "demo" ? "orbio" : "");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [vaultOpen, setVaultOpen] = useState(false);
 
   useEffect(() => {
     const env = new URLSearchParams(window.location.search);
     if (env.get("shot") === "1") armShotMode();
     if (env.get("invite")) sessionStorage.setItem("orbio-invite", env.get("invite") ?? "");
     if (sessionStorage.getItem("orbio-invite")) {
-      setPanel("register");
-      setNotice("Você foi convidado. Crie a conta com o mesmo e-mail do convite.");
+      setInvited(true);
+      setNotice("Convite do workspace. Ative o acesso com o mesmo e-mail.");
     }
     if (env.get("qa") === "1" && mode !== "demo") switchWorkspace("demo");
     if ((env.get("prod") === "1" || env.get("invite")) && mode !== "official") {
@@ -46,7 +47,7 @@ export function LoginPage() {
     event.preventDefault();
     setError("");
     setNotice("");
-    if (mode === "official" && panel === "register") {
+    if (mode === "official" && invited) {
       if (password !== confirm) {
         setError("As senhas não batem.");
         return;
@@ -57,8 +58,8 @@ export function LoginPage() {
         return;
       }
       if (result.needsConfirmation) {
-        setNotice("Conta criada! Confirme seu e-mail antes de entrar — te mandamos um link.");
-        setPanel("login");
+        setNotice("Acesso criado. Confirme o e-mail antes de entrar.");
+        setInvited(false);
         return;
       }
       navigate("/app");
@@ -87,17 +88,37 @@ export function LoginPage() {
         transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-[1] w-full max-w-[400px]"
       >
-      <div className="login-vault">
-        <div className="login-cover">
-          <OrbMark size={88} className="mx-auto" />
-          <p className="login-kicker">Orbio</p>
-          <p className="login-hint">
-            {isQa ? "QA — dados fictícios para teste e pitch." : "Crie a conta ou entre neste workspace."}
-          </p>
-        </div>
+        <div
+          className={`login-vault${vaultOpen ? " is-open" : ""}`}
+          onMouseEnter={() => setVaultOpen(true)}
+          onMouseLeave={(event) => {
+            const next = event.relatedTarget;
+            if (next instanceof Node && event.currentTarget.contains(next)) return;
+            if (event.currentTarget.contains(document.activeElement)) return;
+            setVaultOpen(false);
+          }}
+          onFocusCapture={() => setVaultOpen(true)}
+          onBlurCapture={(event) => {
+            const next = event.relatedTarget;
+            if (next instanceof Node && event.currentTarget.contains(next)) return;
+            setVaultOpen(false);
+          }}
+        >
+          <div className="login-cover">
+            <OrbMark size={88} className="mx-auto" />
+            <p className="login-kicker">Orbio</p>
+            <p className="login-hint">
+              {isQa
+                ? "QA — dados fictícios para teste e pitch."
+                : invited
+                  ? "Ative o acesso convidado neste workspace."
+                  : "Acesso por assinatura. Passe o mouse para entrar."}
+            </p>
+          </div>
 
-        <form className="login-reveal" onSubmit={onSubmit}>
-              {mode === "official" && panel === "register" ? (
+          <form className="login-reveal" onSubmit={onSubmit}>
+            <div className="login-reveal__inner">
+              {mode === "official" && invited ? (
                 <label className="login-field">
                   <span>Nome</span>
                   <input
@@ -126,10 +147,10 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  autoComplete={panel === "register" ? "new-password" : "current-password"}
+                  autoComplete={invited ? "new-password" : "current-password"}
                 />
               </label>
-              {mode === "official" && panel === "register" ? (
+              {mode === "official" && invited ? (
                 <label className="login-field">
                   <span>Confirmar senha</span>
                   <input
@@ -150,9 +171,9 @@ export function LoginPage() {
                 <p className="text-center text-[11px] text-ash-helper">
                   {isQa
                     ? "Elenco fictício · senha qualquer"
-                    : panel === "register"
-                      ? "CRM vazio. A conta fica só neste navegador até existir backend."
-                      : "Use a conta criada neste workspace."}
+                    : invited
+                      ? "Só entra quem foi convidado neste workspace."
+                      : "Use a conta provisionada para esta empresa."}
                 </p>
               )}
 
@@ -174,26 +195,10 @@ export function LoginPage() {
                     </button>
                   ))}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  className="text-[12px] text-ash-helper underline-offset-2 hover:underline"
-                  onClick={() => {
-                    setError("");
-                    setNotice("");
-                    setPanel(panel === "register" ? "login" : "register");
-                  }}
-                >
-                  {panel === "register" ? "Já tenho conta" : "Criar conta do zero"}
-                </button>
-              )}
+              ) : null}
 
               <button type="submit" disabled={signingIn} className="login-submit">
-                {signingIn
-                  ? "Abrindo…"
-                  : !isQa && panel === "register"
-                    ? "Criar e entrar"
-                    : "Entrar"}
+                {signingIn ? "Abrindo…" : invited ? "Ativar acesso" : "Entrar"}
                 <ArrowRight className="h-4 w-4" />
               </button>
 
@@ -204,8 +209,9 @@ export function LoginPage() {
               >
                 {isQa ? "Ir para produção" : "Abrir QA"}
               </button>
-            </form>
-      </div>
+            </div>
+          </form>
+        </div>
       </motion.div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -28,6 +28,7 @@ import { envLabel, getWorkspace, isShotMode } from "@/lib/workspace";
 import { useAuth } from "@/store/useAuth";
 import { useCrm } from "@/store/useCrm";
 import { useUi } from "@/store/useUi";
+import { isReadOnly, usePermissions } from "@/store/usePermissions";
 import { AnimatePresence, motion } from "framer-motion";
 import { useDismiss } from "@/hooks/useDismiss";
 import { useVaultSession } from "@/hooks/useVaultSession";
@@ -77,6 +78,9 @@ export function AppShell() {
   const logout = useAuth((s) => s.logout);
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const toggleSidebar = useUi((s) => s.toggleSidebar);
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const hoverLeave = useRef<number>(0);
+  const expanded = !collapsed || hoverOpen;
   const setCommandOpen = useUi((s) => s.setCommandOpen);
   const toast = useUi((s) => s.toast);
   const notifications = useCrm((s) => s.notifications);
@@ -87,10 +91,23 @@ export function AppShell() {
   );
   const myNotes = (notifications ?? []).filter((n) => !n.userId || n.userId === user?.id);
   const unreadNotes = myNotes.filter((n) => !n.read).length;
+  const readOnly = isReadOnly(usePermissions((s) => s.role));
   const [openNotes, setOpenNotes] = useState(false);
   const notesRef = useDismiss(() => setOpenNotes(false), openNotes);
   useVaultSession();
   useCoreSync();
+
+  useEffect(() => {
+    if (readOnly) document.documentElement.dataset.readonly = "1";
+    else delete document.documentElement.dataset.readonly;
+    return () => {
+      delete document.documentElement.dataset.readonly;
+    };
+  }, [readOnly]);
+
+  useEffect(() => {
+    return () => window.clearTimeout(hoverLeave.current);
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -104,19 +121,30 @@ export function AppShell() {
   }, [setCommandOpen]);
 
   return (
-    <div className="relative min-h-screen p-3 md:p-4">
+    <div className="app-root relative min-h-screen p-3 md:p-4">
+      <div className="app-aurora" aria-hidden>
+        <i />
+      </div>
       <div className="grain" />
-      <div className="flex min-h-[calc(100vh-24px)] gap-3">
+      <div className="relative z-10 flex min-h-[calc(100vh-24px)] gap-3">
       <aside
+        onMouseEnter={() => {
+          window.clearTimeout(hoverLeave.current);
+          if (collapsed) setHoverOpen(true);
+        }}
+        onMouseLeave={() => {
+          window.clearTimeout(hoverLeave.current);
+          hoverLeave.current = window.setTimeout(() => setHoverOpen(false), 160);
+        }}
         className={cn(
-          "sticky top-3 flex h-[calc(100vh-24px)] flex-col rounded-[28px] bg-snow-canvas/75 shadow-lift backdrop-blur-xl transition-[width] duration-300",
-          collapsed ? "w-[72px]" : "w-[228px]",
+          "glass sticky top-3 z-20 flex h-[calc(100vh-24px)] flex-col rounded-[30px] transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          expanded ? "w-[228px]" : "w-[72px]",
         )}
       >
         <div className="flex h-12 items-center justify-between px-3">
           <button onClick={() => navigate("/app")} className="flex min-w-0 items-center gap-2">
-            <Logo wordmark={!collapsed} size={22} />
-            {!collapsed && !isShotMode() ? (
+            <Logo wordmark={expanded} size={22} />
+            {expanded && !isShotMode() ? (
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   getWorkspace() === "official"
@@ -129,19 +157,23 @@ export function AppShell() {
             ) : null}
           </button>
           <button
-            onClick={toggleSidebar}
+            onClick={() => {
+              setHoverOpen(false);
+              toggleSidebar();
+            }}
             className="text-ash-helper hover:text-midnight-ink"
-            aria-label="Recolher menu"
+            aria-label={collapsed ? "Fixar menu aberto" : "Recolher menu"}
+            title={collapsed ? "Fixar aberto" : "Recolher"}
           >
             {collapsed ? "›" : "‹"}
           </button>
         </div>
         <button
           onClick={() => setCommandOpen(true)}
-          className="mx-2 mb-3 flex h-10 items-center gap-2 rounded-pill bg-fog-surface px-3 text-left text-[12px] text-ash-helper hover:bg-lavender-wash"
+          className="mx-2 mb-3 flex h-10 items-center gap-2 rounded-pill bg-midnight-ink/5 px-3 text-left text-[12px] text-ash-helper transition-colors hover:bg-midnight-ink/10"
         >
           <Search className="h-3.5 w-3.5" />
-          {!collapsed ? (
+          {expanded ? (
             <>
               <span className="flex-1">Buscar</span>
               <span className="mono text-[10px]">⌘K</span>
@@ -151,8 +183,8 @@ export function AppShell() {
         <nav className="orbio-scroll flex-1 space-y-4 overflow-y-auto px-2 pb-3">
           {groups.map((group) => (
             <div key={group.label}>
-              {!collapsed ? (
-                <p className="mono mb-1 px-2 text-[10px] text-ash-helper">{group.label}</p>
+              {expanded ? (
+                <p className="app-eyebrow mb-1 px-3 !text-[10px]">{group.label}</p>
               ) : null}
               <div className="space-y-0.5">
                 {group.items.map((item) => (
@@ -162,15 +194,17 @@ export function AppShell() {
                     end={"end" in item ? item.end : false}
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center gap-2 rounded-2xl px-2.5 py-2 text-[13px] text-graphite-body transition-colors",
-                        isActive ? "bg-lavender-wash text-midnight-ink" : "hover:bg-fog-surface",
+                        "flex items-center gap-2 rounded-pill px-3 py-2 text-[13px] transition-all duration-200",
+                        isActive
+                          ? "nav-pill-active font-medium"
+                          : "text-graphite-body hover:bg-midnight-ink/6",
                       )
                     }
                     title={item.label}
                   >
-                    <item.icon className="h-4 w-4 shrink-0 opacity-70" />
-                    {!collapsed ? <span className="flex-1 truncate">{item.label}</span> : null}
-                    {!collapsed && item.to === "/app/inbox" && unreadInbox > 0 ? (
+                    <item.icon className="h-4 w-4 shrink-0 opacity-80" />
+                    {expanded ? <span className="flex-1 truncate">{item.label}</span> : null}
+                    {expanded && item.to === "/app/inbox" && unreadInbox > 0 ? (
                       <span className="mono text-[10px] text-ash-helper">{unreadInbox}</span>
                     ) : null}
                   </NavLink>
@@ -187,10 +221,10 @@ export function AppShell() {
                 logout();
                 navigate("/app/login");
               }}
-              className="flex w-full items-center gap-2 rounded-input px-1 py-1 text-left hover:bg-fog-surface"
+              className="flex w-full items-center gap-2 rounded-pill px-1.5 py-1.5 text-left hover:bg-midnight-ink/6"
             >
               <Avatar initials={user.initials} hue={user.avatarHue} size="sm" />
-              {!collapsed ? (
+              {expanded ? (
                 <span>
                   <span className="block text-[12px] text-midnight-ink">{user.name}</span>
                   <span className="block text-[11px] text-ash-helper">Sair</span>
@@ -201,25 +235,25 @@ export function AppShell() {
         ) : null}
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] bg-snow-canvas/55 shadow-card backdrop-blur-xl">
+      <div className="glass glass--soft flex min-w-0 flex-1 flex-col overflow-hidden rounded-[34px]">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 px-5">
-          <p className="mono hidden text-[11px] text-ash-helper md:block">
-            {location.pathname === "/app" ? "Dashboard" : location.pathname.replace("/app/", "")}
+          <p className="hidden text-[12px] font-medium capitalize text-ash-helper md:block">
+            {location.pathname === "/app" ? "Dashboard" : location.pathname.replace("/app/", "").replace(/\//g, " / ")}
           </p>
           <div className="flex-1" />
           <AppearanceControl />
           <div className="relative" ref={notesRef}>
             <button
               onClick={() => setOpenNotes((v) => !v)}
-              className="relative flex h-8 w-8 items-center justify-center rounded-input hover:bg-fog-surface"
+              className="glass relative flex h-9 w-9 items-center justify-center rounded-full transition-transform hover:-translate-y-px"
             >
               <Bell className="h-4 w-4" />
               {unreadNotes ? (
-                <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-royal-signal" />
+                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-royal-signal ring-2 ring-white/80" />
               ) : null}
             </button>
             {openNotes ? (
-              <div className="absolute top-10 right-0 w-80 rounded-[24px] bg-snow-canvas/95 p-3 shadow-lift backdrop-blur-xl">
+              <div className="glass absolute top-11 right-0 w-80 rounded-[24px] !bg-snow-canvas/90 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[13px]">Alertas</p>
                   <button onClick={() => markAll(user?.id)} className="text-[12px] text-royal-signal">
@@ -228,7 +262,7 @@ export function AppShell() {
                 </div>
                 <div className="space-y-2">
                   {myNotes.map((item) => (
-                    <div key={item.id} className="rounded-card bg-fog-surface p-2.5">
+                    <div key={item.id} className="rounded-[18px] bg-midnight-ink/5 p-2.5">
                       <p className="text-[13px] text-midnight-ink">{item.title}</p>
                       <p className="text-[12px] text-ash-helper">{item.body}</p>
                     </div>
@@ -239,6 +273,11 @@ export function AppShell() {
           </div>
         </header>
 
+        {readOnly ? (
+          <p className="mx-5 mb-1 rounded-pill bg-[#f2ae40]/18 px-4 py-2 text-center text-[12px] text-[#a15c07]">
+            Você tem acesso somente leitura. Peça a um administrador para liberar edição.
+          </p>
+        ) : null}
         <main className="orbio-scroll min-h-0 flex-1 overflow-auto p-4 md:p-6">
           <AnimatePresence mode="wait">
             <motion.div
