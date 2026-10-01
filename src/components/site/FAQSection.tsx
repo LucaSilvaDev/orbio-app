@@ -1,47 +1,74 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { Plus } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 
-const faqs = [
+const faqs: { question: string; answer: React.ReactNode }[] = [
   {
     question: "O que é o Orbio?",
     answer:
-      "É um CRM que reúne pipeline de vendas, contatos, empresas, faturas e campanhas num único workspace, com uma interface pensada pra ser rápida no dia a dia do time comercial.",
+      "É um sistema de gestão que reúne vendas, contatos e empresas, tarefas, agenda, documentos, faturas, chat interno e relatórios num só lugar, com uma interface pensada para ser rápida e agradável no dia a dia.",
   },
   {
-    question: "Pra que tipo de empresa o Orbio serve?",
+    question: "Para qual tipo de empresa serve?",
     answer:
-      "Serve times comerciais de qualquer segmento que hoje organizam vendas em planilha ou em ferramentas separadas e querem centralizar isso num só lugar.",
+      "Para pequenas e médias empresas de qualquer segmento que hoje espalham o trabalho entre planilhas, conversas soltas e ferramentas separadas, e querem centralizar tudo.",
   },
   {
-    question: "Como funciona o período de teste?",
+    question: "Posso testar antes de contratar?",
     answer:
-      "Você cria uma conta e explora o produto direto — sem precisar falar com vendas antes. Se preferir uma demonstração guiada, é só usar o formulário de contato abaixo.",
+      "Pode explorar a demonstração agora, sem cadastro, com dados fictícios. Para usar com a sua equipe, conversamos e liberamos o acesso: o cadastro é feito por convite do dono da conta.",
   },
   {
-    question: "Como o Orbio trata os dados da minha empresa?",
+    question: "E se um funcionário sair da empresa?",
     answer:
-      "O login e os dados de conta ficam no Supabase, com autenticação e políticas de acesso próprias. Detalhes completos — o que coletamos, por quê e por quanto tempo — estão na nossa política de privacidade.",
+      "O administrador encerra o acesso e escolhe quem recebe a carteira dele (empresas, contatos, oportunidades e documentos). As conversas e os registros continuam na empresa, e tudo fica no histórico de alterações.",
+  },
+  {
+    question: "Os dados da minha empresa estão seguros?",
+    answer: (
+      <>
+        Cada empresa só enxerga os próprios dados (o isolamento é aplicado no banco), os arquivos ficam em armazenamento
+        privado e o cofre de senhas é criptografado no seu navegador. Os detalhes do que coletamos e por quê estão na{" "}
+        <Link to="/privacidade" className="underline underline-offset-2">
+          política de privacidade
+        </Link>
+        .
+      </>
+    ),
+  },
+  {
+    question: "Quanto custa?",
+    answer:
+      "Os planos públicos ainda estão sendo definidos. As empresas do programa piloto entram com condição especial e preço fixo por 12 meses — fale com a gente para saber como participar.",
+  },
+  {
+    question: "Já tem cobrança por Pix/boleto e integração com banco?",
+    answer:
+      "Ainda não. Hoje o Orbio registra faturas com anexo, status e vencimento. Cobrança, fluxo de caixa e integração bancária estão em desenvolvimento e serão priorizados com as empresas piloto.",
   },
   {
     question: "Como funciona o suporte?",
     answer:
-      "Hoje o suporte é feito por contato direto pelo formulário — respondemos em até 1 dia útil. Estamos ainda estruturando canais adicionais conforme a base de clientes cresce.",
+      "Direto com quem constrói o produto, pelo formulário abaixo. Respondemos em até 1 dia útil.",
   },
 ];
 
-function FAQItem({ question, answer }: { question: string; answer: string }) {
+function FAQItem({ question, answer }: { question: string; answer: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-stone-divider py-6">
+    <div className="glass overflow-hidden rounded-[24px]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-baseline justify-between gap-6 text-left"
+        className="flex w-full items-center justify-between gap-6 px-6 py-5 text-left"
       >
-        <span className="text-[20px] tracking-[-0.02em] text-midnight-ink sm:text-[24px]">{question}</span>
-        <span className="site-kicker shrink-0 text-ash-helper">{open ? "Fechar" : "Abrir"}</span>
+        <span className="text-[16px] font-medium tracking-[-0.01em] text-midnight-ink sm:text-[17px]">{question}</span>
+        <motion.span animate={{ rotate: open ? 45 : 0 }} className="shrink-0 text-ash-helper">
+          <Plus className="h-5 w-5" />
+        </motion.span>
       </button>
       <AnimatePresence initial={false}>
         {open ? (
@@ -52,9 +79,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <p className="mt-4 max-w-2xl text-[18px] leading-[1.4] tracking-[-0.02em] text-graphite-body">
-              {answer}
-            </p>
+            <p className="max-w-2xl px-6 pb-6 text-[14px] leading-[1.65] text-slate-caption">{answer}</p>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -64,14 +89,14 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 
 export function FAQSection() {
   return (
-    <section id="faq" className="site-wrap py-24">
-      <Reveal>
-        <p className="site-kicker text-ash-helper">Perguntas frequentes</p>
-        <h2 className="mt-4 max-w-3xl font-serif text-[clamp(36px,5vw,72px)] leading-[0.92] tracking-[-0.04em] text-midnight-ink">
-          O que costumam perguntar antes de entrar.
+    <section id="faq" className="mx-auto max-w-[820px] px-4 py-16 sm:py-24">
+      <Reveal className="text-center">
+        <p className="app-eyebrow">Perguntas frequentes</p>
+        <h2 className="app-display mt-3 text-[clamp(32px,4.4vw,52px)] text-midnight-ink">
+          O que costumam perguntar <span className="text-ash-helper">antes de entrar.</span>
         </h2>
       </Reveal>
-      <Reveal delay={0.08} className="mt-12">
+      <Reveal delay={0.08} className="mt-10 space-y-3">
         {faqs.map((item) => (
           <FAQItem key={item.question} question={item.question} answer={item.answer} />
         ))}

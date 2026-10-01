@@ -2,12 +2,15 @@ import { Link } from "react-router-dom";
 
 export function StickyMobileCTA() {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t border-stone-divider bg-snow-canvas/95 p-3 backdrop-blur-xl sm:hidden">
-      <a href="#contato" className="site-cta site-cta--line flex-1 justify-center py-3">
-        Vendas
+    <div className="glass fixed inset-x-3 bottom-3 z-40 flex gap-2 rounded-full p-1.5 sm:hidden">
+      <a href="#contato" className="flex-1 rounded-full py-3 text-center text-[13px] font-medium text-midnight-ink">
+        Falar com a gente
       </a>
-      <Link to="/app/login" className="site-cta flex-1 justify-center py-3">
-        Começar
+      <Link
+        to="/app/login?qa=1"
+        className="flex-1 rounded-full bg-midnight-ink py-3 text-center text-[13px] font-medium text-snow-canvas"
+      >
+        Ver demonstração
       </Link>
     </div>
   );
