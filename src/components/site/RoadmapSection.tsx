@@ -26,7 +26,7 @@ const ITEMS = [
 export function RoadmapSection() {
   return (
     <section className="mx-auto max-w-[1180px] px-4 py-16 sm:py-24">
-      <Reveal className="text-center">
+      <Reveal repeat className="text-center">
         <p className="app-eyebrow">O que vem a seguir</p>
         <h2 className="app-display mx-auto mt-3 max-w-2xl text-[clamp(32px,4.6vw,56px)] text-midnight-ink">
           Estamos construindo o resto, <span className="text-ash-helper">com quem usa.</span>
@@ -38,7 +38,7 @@ export function RoadmapSection() {
 
       <div className="mt-12 grid gap-4 md:grid-cols-3">
         {ITEMS.map((item, i) => (
-          <Reveal key={item.title} delay={i * 0.08}>
+          <Reveal repeat key={item.title} delay={i * 0.08}>
             <div className="glass relative h-full overflow-hidden rounded-[28px] p-6">
               <motion.div
                 aria-hidden

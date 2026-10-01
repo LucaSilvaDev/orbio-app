@@ -90,13 +90,13 @@ function FAQItem({ question, answer }: { question: string; answer: React.ReactNo
 export function FAQSection() {
   return (
     <section id="faq" className="mx-auto max-w-[820px] px-4 py-16 sm:py-24">
-      <Reveal className="text-center">
+      <Reveal repeat className="text-center">
         <p className="app-eyebrow">Perguntas frequentes</p>
         <h2 className="app-display mt-3 text-[clamp(32px,4.4vw,52px)] text-midnight-ink">
           O que costumam perguntar <span className="text-ash-helper">antes de entrar.</span>
         </h2>
       </Reveal>
-      <Reveal delay={0.08} className="mt-10 space-y-3">
+      <Reveal repeat delay={0.08} className="mt-10 space-y-3">
         {faqs.map((item) => (
           <FAQItem key={item.question} question={item.question} answer={item.answer} />
         ))}

@@ -11,7 +11,7 @@ const BENEFITS = [
 export function PilotSection() {
   return (
     <section id="piloto" className="mx-auto max-w-[1180px] px-4 py-16">
-      <Reveal>
+      <Reveal repeat>
         <div className="glass glass--ink relative overflow-hidden rounded-[40px] p-8 sm:p-14">
           <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 h-72 w-72 rounded-full bg-[var(--highlight)]/25 blur-3xl" />
           <div className="relative grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">

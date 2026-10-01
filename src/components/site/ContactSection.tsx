@@ -37,7 +37,7 @@ export function ContactSection() {
   return (
     <section id="contato" className="mx-auto max-w-[1180px] px-4 py-16 sm:py-24">
       <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-        <Reveal>
+        <Reveal repeat>
           <p className="app-eyebrow">Falar com a gente</p>
           <h2 className="app-display mt-3 text-[clamp(34px,4.8vw,58px)] text-midnight-ink">
             Conte sobre a sua empresa. <span className="text-ash-helper">A gente responde.</span>
@@ -52,7 +52,7 @@ export function ContactSection() {
           </ul>
         </Reveal>
 
-        <Reveal delay={0.1}>
+        <Reveal repeat delay={0.1}>
           <form onSubmit={onSubmit} className="glass space-y-5 rounded-[32px] p-6 sm:p-8">
             <Field label="Nome">
               <Input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" className={fieldClass} />

@@ -45,7 +45,7 @@ function ChatVisual() {
           key={i}
           initial={{ opacity: 0, y: 12, scale: 0.96 }}
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: false, amount: 0.3 }}
           transition={{ delay: 0.3 + i * 0.5, duration: 0.5 }}
           className={`flex items-end gap-2 ${line.mine ? "flex-row-reverse" : ""}`}
         >
@@ -62,7 +62,7 @@ function ChatVisual() {
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
+        viewport={{ once: false, amount: 0.3 }}
         transition={{ delay: 2 }}
         className="ml-9 flex gap-1"
       >
@@ -92,7 +92,7 @@ function DocsVisual() {
           key={file.name}
           initial={{ opacity: 0, x: -14 }}
           whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false, amount: 0.3 }}
           transition={{ delay: 0.2 + i * 0.18 }}
           className="flex items-center gap-2.5 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-white"
         >
@@ -104,7 +104,7 @@ function DocsVisual() {
           <motion.span
             initial={{ scale: 0 }}
             whileInView={{ scale: 1 }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.3 }}
             transition={{ delay: 0.9 + i * 0.25, type: "spring", stiffness: 300 }}
             className="flex items-center gap-1 rounded-full bg-[#2ee47a]/18 px-1.5 py-0.5 text-[9px] font-medium text-[#177245]"
           >
@@ -189,7 +189,7 @@ function PeopleVisual() {
           key={row.n}
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false, amount: 0.3 }}
           transition={{ delay: 0.15 + i * 0.15 }}
           className="flex items-center gap-2.5 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-white"
         >
@@ -218,7 +218,7 @@ const CARDS = [
 export function BentoSection() {
   return (
     <section id="recursos" className="mx-auto max-w-[1180px] px-4 py-16 sm:py-24">
-      <Reveal className="text-center">
+      <Reveal repeat className="text-center">
         <p className="app-eyebrow">O sistema</p>
         <h2 className="app-display mx-auto mt-3 max-w-3xl text-[clamp(34px,5vw,60px)] text-midnight-ink">
           Tudo o que a empresa usa, <span className="text-ash-helper">no mesmo ritmo.</span>
@@ -227,7 +227,7 @@ export function BentoSection() {
 
       <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {CARDS.map((card, i) => (
-          <Reveal key={card.title} delay={(i % 4) * 0.07} className={card.span}>
+          <Reveal repeat key={card.title} delay={(i % 4) * 0.07} className={card.span}>
             <motion.article
               whileHover={{ y: -6 }}
               transition={{ type: "spring", stiffness: 260, damping: 22 }}

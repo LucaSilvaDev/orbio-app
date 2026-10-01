@@ -21,7 +21,7 @@ export function HistorySection() {
     <section className="mx-auto max-w-[1180px] px-4 py-16">
       <div className="glass overflow-hidden rounded-[40px] p-6 sm:p-12">
         <div className="grid gap-12 lg:grid-cols-[1fr_0.95fr] lg:items-center">
-          <Reveal>
+          <Reveal repeat>
             <p className="app-eyebrow">Para a empresa, não para a pessoa</p>
             <h2 className="app-display mt-3 text-[clamp(32px,4.4vw,54px)] text-midnight-ink">
               O conhecimento do negócio <span className="text-ash-helper">não vai embora com o funcionário.</span>
@@ -39,7 +39,7 @@ export function HistorySection() {
             </ul>
           </Reveal>
 
-          <Reveal delay={0.1}>
+          <Reveal repeat delay={0.1}>
             <div className="rounded-[28px] bg-white/60 p-5 ring-1 ring-white/80">
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-[14px] font-medium text-midnight-ink">Histórico e lixeira</p>
@@ -53,7 +53,7 @@ export function HistorySection() {
                     key={entry.what}
                     initial={{ opacity: 0, x: 18 }}
                     whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
+                    viewport={{ once: false, amount: 0.3 }}
                     transition={{ delay: 0.2 + i * 0.2, duration: 0.5 }}
                     className="relative flex items-center gap-3 pl-5"
                   >

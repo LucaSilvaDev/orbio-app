@@ -17,14 +17,18 @@ import { Avatar } from "@/components/ui/Avatar";
 
 function Count({ to, money = false }: { to: number; money?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
+  const inView = useInView(ref, { amount: 0.6 });
   useEffect(() => {
-    if (!inView || !ref.current) return;
+    if (!ref.current) return;
     const node = ref.current;
     const format = (v: number) =>
       money
         ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
         : Math.round(v).toLocaleString("pt-BR");
+    if (!inView) {
+      node.textContent = format(0);
+      return;
+    }
     const controls = animate(0, to, {
       duration: 1.6,
       ease: [0.16, 1, 0.3, 1],
@@ -70,7 +74,7 @@ function AreaChart() {
         strokeLinecap="round"
         initial={{ pathLength: 0 }}
         whileInView={{ pathLength: 1 }}
-        viewport={{ once: true }}
+        viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 1.6, ease: "easeOut" }}
       />
       <motion.path
@@ -78,7 +82,7 @@ function AreaChart() {
         fill="url(#hero-area)"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
+        viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 1.2, delay: 0.6 }}
       />
       <motion.path
@@ -89,7 +93,7 @@ function AreaChart() {
         strokeLinecap="round"
         initial={{ pathLength: 0 }}
         whileInView={{ pathLength: 1 }}
-        viewport={{ once: true }}
+        viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 1.8, ease: "easeOut" }}
       />
       <motion.circle
@@ -101,7 +105,7 @@ function AreaChart() {
         strokeWidth="2"
         initial={{ scale: 0 }}
         whileInView={{ scale: 1 }}
-        viewport={{ once: true }}
+        viewport={{ once: false, amount: 0.3 }}
         transition={{ delay: 1.7, type: "spring" }}
       />
     </svg>
@@ -136,7 +140,7 @@ function Donut() {
             strokeDashoffset={-offset}
             initial={{ opacity: 0, strokeDasharray: `0 ${c}` }}
             whileInView={{ opacity: 1, strokeDasharray: `${length} ${c}` }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.3 }}
             transition={{ duration: 0.9, delay: 0.3 + i * 0.18 }}
           />
         );
@@ -306,7 +310,7 @@ export function HeroDashboard() {
                   key={deal.name}
                   initial={{ opacity: 0, x: -16 }}
                   whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: false, amount: 0.3 }}
                   transition={{ delay: 0.5 + i * 0.12 }}
                   className="flex items-center gap-3 rounded-[18px] bg-midnight-ink/[0.04] px-3 py-2"
                 >
